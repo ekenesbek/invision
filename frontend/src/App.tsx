@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  GraduationCap, Search, AlertTriangle, Users, TrendingUp,
-  ShieldCheck, Brain, BarChart3, Download, Cpu, Sparkles, X,
-  UserPlus, Upload, FileJson, Plus, Trash2, ChevronRight,
-  Settings, Eye, Zap, Table, ChevronDown, Check, ArrowLeft
+  GraduationCap, AlertTriangle, Users, ShieldCheck, Brain,
+  BarChart3, Download, Cpu, Sparkles, X, Plus, Trash2,
+  Settings, Eye, Zap, ChevronDown, Check, ArrowLeft,
+  Upload, Table, CheckCircle, XCircle, Clock, FileText,
+  ChevronRight, UserCheck, UserX
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -17,6 +18,7 @@ interface Candidate {
   education_level: string; essay_motivation: string; essay_leadership: string; essay_challenge: string;
   activities: Activity[]; languages: string[]; skills: string[];
   why_invision: string; future_goals: string; community_contribution: string;
+  status: "pending" | "approved" | "rejected";
 }
 interface DimensionData { name: string; score: number; weight: number; key_signals?: string[]; }
 interface AIDetection { is_likely_ai_generated: boolean; confidence: number; indicators: string[]; }
@@ -27,8 +29,9 @@ interface ScoringResult {
   scoring_method?: string; baseline_score?: number;
   llm_analysis?: { hidden_strengths?: string[]; concerns?: string[]; interview_questions?: string[]; };
 }
-interface ConfigState { has_api_key: boolean; model: string; available_models: string[]; }
-type Page = "candidates" | "settings" | "result";
+interface ConfigState { has_api_key: boolean; model: string; available_models: string[]; llm_active: boolean; }
+type Page = "candidates" | "settings" | "profile" | "report";
+type Tab = "pending" | "approved" | "rejected";
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -61,9 +64,162 @@ function ScoreCircle({ score, size = 90 }: { score: number; size?: number }) {
   );
 }
 
-// ─── Result Detail ──────────────────────────────────────
+// ─── Candidate Profile View ────────────────────────────
 
-function ResultView({ result, onBack }: { result: ScoringResult; onBack: () => void }) {
+function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, scoring, llmActive }: {
+  candidate: Candidate; result?: ScoringResult; onBack: () => void;
+  onScore: () => void; onApprove: () => void; onReject: () => void;
+  scoring: boolean; llmActive: boolean;
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"><ArrowLeft className="w-4 h-4" /></button>
+        <h2 className="text-lg font-bold text-gray-900">{candidate.full_name}</h2>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+          candidate.status === "approved" ? "border-green-200 bg-green-50 text-green-600" :
+          candidate.status === "rejected" ? "border-red-200 bg-red-50 text-red-600" :
+          "border-gray-200 bg-gray-50 text-gray-500"
+        }`}>
+          {candidate.status === "approved" ? <><CheckCircle className="w-3 h-3" /> Одобрен</> :
+           candidate.status === "rejected" ? <><XCircle className="w-3 h-3" /> Отклонён</> :
+           <><Clock className="w-3 h-3" /> На рассмотрении</>}
+        </span>
+        <div className="ml-auto flex items-center gap-2">
+          {candidate.status === "pending" && (
+            <>
+              <button onClick={onReject} className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1.5 font-medium">
+                <XCircle className="w-3.5 h-3.5" /> Отклонить
+              </button>
+              <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1.5 font-semibold">
+                <CheckCircle className="w-3.5 h-3.5" /> Одобрить
+              </button>
+            </>
+          )}
+          {candidate.status === "rejected" && (
+            <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1.5 font-semibold">
+              <CheckCircle className="w-3.5 h-3.5" /> Одобрить
+            </button>
+          )}
+          {candidate.status === "approved" && (
+            <button onClick={onReject} className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1.5 font-medium">
+              <XCircle className="w-3.5 h-3.5" /> Отклонить
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="p-6 max-w-4xl">
+        {/* Personal info card */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-orange-500" /> Личные данные
+          </h3>
+          <div className="grid grid-cols-4 gap-3 text-sm">
+            <div><span className="text-[10px] text-gray-400 uppercase block">Возраст</span><span className="text-gray-800 font-medium">{candidate.age}</span></div>
+            <div><span className="text-[10px] text-gray-400 uppercase block">Город</span><span className="text-gray-800 font-medium">{candidate.city || "—"}</span></div>
+            <div><span className="text-[10px] text-gray-400 uppercase block">Школа</span><span className="text-gray-800 font-medium">{candidate.school_name || "—"}</span></div>
+            <div><span className="text-[10px] text-gray-400 uppercase block">GPA</span><span className="text-gray-800 font-medium">{candidate.gpa ?? "—"}</span></div>
+          </div>
+
+          {candidate.languages.length > 0 && (
+            <div className="mt-4"><span className="text-[10px] text-gray-400 uppercase block mb-1">Языки</span>
+              <div className="flex flex-wrap gap-1">{candidate.languages.map((l, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">{l}</span>)}</div>
+            </div>
+          )}
+
+          {candidate.skills.length > 0 && (
+            <div className="mt-3"><span className="text-[10px] text-gray-400 uppercase block mb-1">Навыки</span>
+              <div className="flex flex-wrap gap-1">{candidate.skills.map((s, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{s}</span>)}</div>
+            </div>
+          )}
+
+          {candidate.activities.length > 0 && (
+            <div className="mt-3"><span className="text-[10px] text-gray-400 uppercase block mb-1">Активности</span>
+              <div className="space-y-1.5">{candidate.activities.map((a, i) => (
+                <div key={i} className="text-xs text-gray-600 flex gap-2 items-start">
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 mt-1" />
+                  <div><span className="font-medium text-gray-800">{a.title}</span>{a.role && <span className="text-gray-400"> — {a.role}</span>}{a.impact && <span className="text-green-600 ml-1">({a.impact})</span>}</div>
+                </div>
+              ))}</div>
+            </div>
+          )}
+        </div>
+
+        {/* Essays */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-orange-500" /> Эссе и ответы
+          </h3>
+          <div className="space-y-4">
+            {candidate.essay_motivation && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Мотивация</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_motivation}</p>
+              </div>
+            )}
+            {candidate.essay_leadership && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Лидерство</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_leadership}</p>
+              </div>
+            )}
+            {candidate.essay_challenge && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Вызовы</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_challenge}</p>
+              </div>
+            )}
+            {candidate.why_invision && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Почему inVision U?</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.why_invision}</p>
+              </div>
+            )}
+            {candidate.future_goals && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Цели на 5 лет</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.future_goals}</p>
+              </div>
+            )}
+            {candidate.community_contribution && (
+              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Вклад в сообщество</span>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.community_contribution}</p>
+              </div>
+            )}
+            {!candidate.essay_motivation && !candidate.essay_leadership && !candidate.essay_challenge && (
+              <p className="text-sm text-gray-400">Нет эссе</p>
+            )}
+          </div>
+        </div>
+
+        {/* Score report section */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-orange-500" /> Отчёт оценки
+            </h3>
+            <button onClick={onScore} disabled={scoring}
+              className="text-xs px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+              {scoring ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                llmActive ? <><Sparkles className="w-3.5 h-3.5" /> Сгенерировать (AI)</> : <><Cpu className="w-3.5 h-3.5" /> Сгенерировать</>}
+            </button>
+          </div>
+
+          {!result && !scoring && (
+            <div className="text-center py-8 text-gray-400">
+              <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-20" />
+              <p className="text-sm">Отчёт ещё не сгенерирован</p>
+              <p className="text-xs mt-1">Нажмите кнопку выше для генерации{llmActive ? " с помощью AI" : " (эвристика)"}</p>
+            </div>
+          )}
+
+          {result && <ReportSection result={result} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Report Section (scoring results) ──────────────────
+
+function ReportSection({ result }: { result: ScoringResult }) {
   const recColors: Record<string, string> = {
     strong_recommend: "bg-green-50 text-green-700 border-green-200",
     recommend: "bg-blue-50 text-blue-700 border-blue-200",
@@ -74,111 +230,112 @@ function ResultView({ result, onBack }: { result: ScoringResult; onBack: () => v
   const llm = result.llm_analysis;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"><ArrowLeft className="w-4 h-4" /></button>
-        <h2 className="text-lg font-bold text-gray-900">{result.candidate_name}</h2>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${isLLM ? "border-orange-200 bg-orange-50 text-orange-600" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
-          {isLLM ? <><Sparkles className="w-3 h-3" /> LLM</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
-        </span>
-        <span className={`ml-auto text-xs font-semibold px-3 py-1.5 rounded-full border ${recColors[result.recommendation] || ""}`}>
-          {result.recommendation_label}
-        </span>
+    <div>
+      {/* Score + Summary */}
+      <div className="flex items-start gap-5 mb-5">
+        <ScoreCircle score={result.total_score} />
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${isLLM ? "border-orange-200 bg-orange-50 text-orange-600" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
+              {isLLM ? <><Sparkles className="w-3 h-3" /> LLM</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
+            </span>
+            <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${recColors[result.recommendation] || ""}`}>
+              {result.recommendation_label}
+            </span>
+          </div>
+          <p className="text-sm text-gray-600 leading-relaxed">{result.summary}</p>
+          {result.baseline_score != null && (
+            <div className="mt-2 flex items-center gap-4 text-xs">
+              <span className="text-gray-400">Baseline: <span className="text-gray-600 font-medium">{result.baseline_score}</span></span>
+              <span className="text-gray-400">Score: <span className="text-gray-900 font-medium">{Math.round(result.total_score)}</span></span>
+              <span className={result.total_score > result.baseline_score ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+                {result.total_score > result.baseline_score ? "+" : ""}{Math.round(result.total_score - result.baseline_score)} vs baseline
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="p-6 max-w-4xl">
-        {/* Score + Summary */}
-        <div className="flex items-start gap-6 mb-6">
-          <ScoreCircle score={result.total_score} />
-          <div className="flex-1">
-            <p className="text-sm text-gray-600 leading-relaxed">{result.summary}</p>
-            {result.baseline_score != null && (
-              <div className="mt-2 flex items-center gap-4 text-xs">
-                <span className="text-gray-400">Baseline: <span className="text-gray-600 font-medium">{result.baseline_score}</span></span>
-                <span className="text-gray-400">AI Score: <span className="text-gray-900 font-medium">{Math.round(result.total_score)}</span></span>
-                <span className={result.total_score > result.baseline_score ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
-                  {result.total_score > result.baseline_score ? "+" : ""}{Math.round(result.total_score - result.baseline_score)} vs baseline
-                </span>
+      {/* Dimensions */}
+      <div className="mb-4">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Критерии оценки</h4>
+        {result.dimensions.map((dim, i) => {
+          const pct = Math.round(dim.weight * 100);
+          const barColor = dim.score >= 60 ? "bg-gradient-to-r from-green-500 to-green-400" : dim.score >= 35 ? "bg-gradient-to-r from-amber-500 to-amber-400" : "bg-gradient-to-r from-red-500 to-red-400";
+          return (
+            <div key={i} className="mb-3">
+              <div className="flex justify-between mb-1">
+                <span className="text-sm text-gray-600">{dim.name} <span className="text-[10px] text-gray-400">{pct}%</span></span>
+                <span className="text-sm font-bold text-gray-900">{Math.round(dim.score)}</span>
+              </div>
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${dim.score}%` }} transition={{ duration: 0.5 }} className={`h-full rounded-full ${barColor}`} />
+              </div>
+              {dim.key_signals && dim.key_signals.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {dim.key_signals.slice(0, 4).map((s, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{s}</span>)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* AI Detection */}
+      <div className="mb-4">
+        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
+          <Brain className="w-3.5 h-3.5 text-orange-500" /> AI-детекция
+        </h4>
+        {result.ai_detection.is_likely_ai_generated ? (
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+            <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-1"><AlertTriangle className="w-4 h-4" /> AI обнаружен ({Math.round(result.ai_detection.confidence * 100)}%)</div>
+            <ul className="ml-6">{result.ai_detection.indicators.map((ind, i) => <li key={i} className="text-xs text-red-600/70 list-disc">{ind}</li>)}</ul>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-2 text-green-700 text-sm">
+            <ShieldCheck className="w-4 h-4" /> AI не обнаружен
+          </div>
+        )}
+      </div>
+
+      {/* LLM Analysis */}
+      {llm && (
+        <div className="mb-4">
+          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-orange-500" /> LLM-анализ
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {llm.hidden_strengths && llm.hidden_strengths.length > 0 && (
+              <div className="rounded-lg bg-orange-50 border border-orange-200 p-3">
+                <div className="text-[11px] text-orange-600 uppercase font-semibold mb-2">Скрытые сильные стороны</div>
+                <ul className="space-y-1">{llm.hidden_strengths.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-orange-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
+              </div>
+            )}
+            {llm.concerns && llm.concerns.length > 0 && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                <div className="text-[11px] text-amber-600 uppercase font-semibold mb-2">Опасения</div>
+                <ul className="space-y-1">{llm.concerns.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-amber-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
+              </div>
+            )}
+            {llm.interview_questions && llm.interview_questions.length > 0 && (
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 md:col-span-2">
+                <div className="text-[11px] text-blue-600 uppercase font-semibold mb-2">Вопросы для интервью</div>
+                <ul className="space-y-1">{llm.interview_questions.map((q, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-blue-500 shrink-0">{i + 1}.</span>{q}</li>)}</ul>
               </div>
             )}
           </div>
         </div>
+      )}
 
-        {/* Dimensions */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-orange-500" /> Критерии оценки
-          </h3>
-          {result.dimensions.map((dim, i) => {
-            const pct = Math.round(dim.weight * 100);
-            const barColor = dim.score >= 60 ? "bg-gradient-to-r from-green-500 to-green-400" : dim.score >= 35 ? "bg-gradient-to-r from-amber-500 to-amber-400" : "bg-gradient-to-r from-red-500 to-red-400";
-            return (
-              <div key={i} className="mb-3">
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm text-gray-600">{dim.name} <span className="text-[10px] text-gray-400">{pct}%</span></span>
-                  <span className="text-sm font-bold text-gray-900">{Math.round(dim.score)}</span>
-                </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${dim.score}%` }} transition={{ duration: 0.5 }} className={`h-full rounded-full ${barColor}`} />
-                </div>
-                {dim.key_signals && dim.key_signals.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {dim.key_signals.slice(0, 4).map((s, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{s}</span>)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+      {/* Strengths & Areas */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+          <h4 className="text-[11px] font-semibold text-green-600 uppercase mb-2">Сильные стороны</h4>
+          <ul className="space-y-1">{result.strengths.length > 0 ? result.strengths.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 mt-1" />{s}</li>) : <li className="text-xs text-gray-400">—</li>}</ul>
         </div>
-
-        {/* AI Detection */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-orange-500" /> AI-детекция
-          </h3>
-          {result.ai_detection.is_likely_ai_generated ? (
-            <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-              <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-1"><AlertTriangle className="w-4 h-4" /> AI обнаружен ({Math.round(result.ai_detection.confidence * 100)}%)</div>
-              <ul className="ml-6">{result.ai_detection.indicators.map((ind, i) => <li key={i} className="text-xs text-red-600/70 list-disc">{ind}</li>)}</ul>
-            </div>
-          ) : (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-2 text-green-700 text-sm">
-              <ShieldCheck className="w-4 h-4" /> AI не обнаружен
-            </div>
-          )}
-        </div>
-
-        {/* LLM Analysis */}
-        {llm && (
-          <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-orange-500" /> LLM-анализ</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {llm.hidden_strengths && llm.hidden_strengths.length > 0 && (
-                <div className="rounded-lg bg-orange-50 border border-orange-200 p-3">
-                  <div className="text-[11px] text-orange-600 uppercase font-semibold mb-2">Скрытые сильные стороны</div>
-                  <ul className="space-y-1">{llm.hidden_strengths.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-orange-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
-                </div>
-              )}
-              {llm.interview_questions && llm.interview_questions.length > 0 && (
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-                  <div className="text-[11px] text-blue-600 uppercase font-semibold mb-2">Вопросы для интервью</div>
-                  <ul className="space-y-1">{llm.interview_questions.map((q, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-blue-500 shrink-0">{i + 1}.</span>{q}</li>)}</ul>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Strengths & Areas */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h4 className="text-xs font-semibold text-green-600 uppercase mb-3">Сильные стороны</h4>
-            <ul className="space-y-1.5">{result.strengths.length > 0 ? result.strengths.map((s, i) => <li key={i} className="text-sm text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 mt-1.5" />{s}</li>) : <li className="text-sm text-gray-400">—</li>}</ul>
-          </div>
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h4 className="text-xs font-semibold text-amber-600 uppercase mb-3">Зоны для рассмотрения</h4>
-            <ul className="space-y-1.5">{result.areas_for_review.length > 0 ? result.areas_for_review.map((a, i) => <li key={i} className="text-sm text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1.5" />{a}</li>) : <li className="text-sm text-gray-400">—</li>}</ul>
-          </div>
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+          <h4 className="text-[11px] font-semibold text-amber-600 uppercase mb-2">Зоны для рассмотрения</h4>
+          <ul className="space-y-1">{result.areas_for_review.length > 0 ? result.areas_for_review.map((a, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1" />{a}</li>) : <li className="text-xs text-gray-400">—</li>}</ul>
         </div>
       </div>
     </div>
@@ -207,7 +364,6 @@ function BatchResultsView({ results, onBack, onViewCandidate }: { results: Scori
       </div>
 
       <div className="p-6 max-w-5xl">
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
             <div className="text-2xl font-bold text-gray-900">{results.length}</div><div className="text-[11px] text-gray-400">Всего</div>
@@ -223,7 +379,6 @@ function BatchResultsView({ results, onBack, onViewCandidate }: { results: Scori
           </div>
         </div>
 
-        {/* Table */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
           <div className="grid grid-cols-[40px_1fr_80px_100px_140px_60px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase font-medium">
             <span>#</span><span>Кандидат</span><span>Балл</span><span>Метод</span><span>Рекомендация</span><span></span>
@@ -269,6 +424,7 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
       languages: form.languages.split(",").map(s => s.trim()).filter(Boolean),
       skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
       why_invision: form.why_invision, future_goals: form.future_goals, community_contribution: form.community_contribution,
+      status: "pending",
     });
     onClose();
   };
@@ -281,7 +437,6 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-6 grid grid-cols-2 gap-6">
-          {/* Left */}
           <div className="space-y-4">
             <div><label className={lbl}>ФИО *</label><input className={inp} value={form.full_name} onChange={e => set("full_name", e.target.value)} placeholder="Айгерим Нурланова" /></div>
             <div className="grid grid-cols-3 gap-2">
@@ -306,7 +461,6 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
               ))}
             </div>
           </div>
-          {/* Right — essays */}
           <div className="space-y-4">
             <div><label className={lbl}>Эссе: Мотивация</label><textarea className={inp + " min-h-[80px] resize-y"} value={form.essay_motivation} onChange={e => set("essay_motivation", e.target.value)} placeholder="Почему вы хотите учиться в inVision U?" /></div>
             <div><label className={lbl}>Эссе: Лидерство</label><textarea className={inp + " min-h-[80px] resize-y"} value={form.essay_leadership} onChange={e => set("essay_leadership", e.target.value)} placeholder="Расскажите о ситуации лидерства..." /></div>
@@ -338,7 +492,7 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
     if (key) body.openai_api_key = key;
     const res = await fetch(`${API}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await res.json();
-    onUpdate(data);
+    onUpdate({ ...data, llm_active: config.llm_active });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -347,9 +501,41 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6">
       <h2 className="text-lg font-bold text-gray-900 mb-1">Настройки</h2>
-      <p className="text-xs text-gray-400 mb-6">Настройте API ключ и модель для AI-оценки кандидатов</p>
+      <p className="text-xs text-gray-400 mb-6">Настройте режим оценки, API ключ и модель</p>
 
       <div className="max-w-lg space-y-6">
+        {/* LLM Mode Toggle */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-orange-500" /> Режим оценки
+          </h3>
+          <div className="flex gap-3">
+            <button onClick={() => onUpdate({ ...config, llm_active: false })}
+              className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors flex items-center gap-2 justify-center ${
+                !config.llm_active ? "border-gray-800 bg-gray-900 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}>
+              <Cpu className="w-4 h-4" /> Эвристика
+            </button>
+            <button onClick={() => {
+              if (!config.has_api_key) return;
+              onUpdate({ ...config, llm_active: true });
+            }}
+              className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors flex items-center gap-2 justify-center ${
+                config.llm_active ? "border-orange-400 bg-orange-500 text-white" : config.has_api_key ? "border-gray-200 text-gray-600 hover:bg-gray-50" : "border-gray-100 text-gray-300 cursor-not-allowed"
+              }`}>
+              <Sparkles className="w-4 h-4" /> AI (LLM)
+            </button>
+          </div>
+          {!config.has_api_key && !config.llm_active && (
+            <p className="text-[11px] text-gray-400 mt-2">Для AI-режима необходим API ключ</p>
+          )}
+          <p className="text-[11px] text-gray-400 mt-2">
+            {config.llm_active
+              ? "Все генерации отчётов будут использовать AI (LLM)"
+              : "Все генерации отчётов будут использовать эвристику (без API)"}
+          </p>
+        </div>
+
         {/* API Key */}
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
@@ -404,94 +590,156 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
 export default function App() {
   const [page, setPage] = useState<Page>("candidates");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, model: "gpt-4o-mini", available_models: [] });
+  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, model: "gpt-4o-mini", available_models: [], llm_active: false });
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState(false);
   const [scoringId, setScoringId] = useState<string | null>(null);
   const [results, setResults] = useState<Map<string, ScoringResult>>(new Map());
-  const [viewResult, setViewResult] = useState<ScoringResult | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("pending");
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [batchResults, setBatchResults] = useState<ScoringResult[] | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load demo candidates + config
-  useEffect(() => {
-    Promise.all([
-      fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, model: "gpt-4o-mini", available_models: [] })),
-      fetch(`${API}/demo/raw`).then(r => r.json()).catch(() => []),
-    ]).then(([cfg, raw]) => {
-      setConfig(cfg);
-      if (Array.isArray(raw) && raw.length > 0) {
-        setCandidates(raw.map((c: any) => ({
-          id: c.id || nextId(), full_name: c.full_name || "", age: c.age || 17, city: c.city || "",
-          school_name: c.school_name || "", gpa: c.gpa ?? null, education_level: c.education_level || "school",
-          essay_motivation: c.essay_motivation || "", essay_leadership: c.essay_leadership || "", essay_challenge: c.essay_challenge || "",
-          activities: (c.activities || []).map((a: any) => ({ title: a.title || "", description: a.description || "", role: a.role || "", year: a.year || null, impact: a.impact || "" })),
-          languages: c.languages || [], skills: c.skills || [],
-          why_invision: c.why_invision || "", future_goals: c.future_goals || "", community_contribution: c.community_contribution || "",
-        })));
-      }
-      setLoading(false);
-    });
-  }, []);
+  const parseCandidate = (c: any): Candidate => ({
+    id: c.id || nextId(), full_name: c.full_name || "", age: c.age || 17, city: c.city || "",
+    school_name: c.school_name || "", gpa: c.gpa ?? null, education_level: c.education_level || "school",
+    essay_motivation: c.essay_motivation || "", essay_leadership: c.essay_leadership || "", essay_challenge: c.essay_challenge || "",
+    activities: (c.activities || []).map((a: any) => ({ title: a.title || "", description: a.description || "", role: a.role || "", year: a.year || null, impact: a.impact || "" })),
+    languages: c.languages || [], skills: c.skills || [],
+    why_invision: c.why_invision || "", future_goals: c.future_goals || "", community_contribution: c.community_contribution || "",
+    status: c.status || "pending",
+  });
 
-  const addCandidate = (c: Candidate) => setCandidates(cs => [...cs, c]);
-  const removeCandidate = (id: string) => {
-    setCandidates(cs => cs.filter(c => c.id !== id));
-    setResults(rs => { const n = new Map(rs); n.delete(id); return n; });
+  const loadData = async () => {
+    try {
+      const [cfg, data] = await Promise.all([
+        fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, model: "gpt-4o-mini", available_models: [] })),
+        fetch(`${API}/candidates`).then(r => r.json()).catch(() => null),
+      ]);
+      setConfig({ ...cfg, llm_active: cfg.has_api_key });
+
+      if (data && data.candidates && data.candidates.length > 0) {
+        setCandidates(data.candidates.map(parseCandidate));
+        // Load persisted scoring results
+        if (data.scoring_results) {
+          const sr = new Map<string, ScoringResult>();
+          for (const [id, result] of Object.entries(data.scoring_results)) {
+            sr.set(id, result as ScoringResult);
+          }
+          setResults(sr);
+        }
+      } else {
+        // No candidates in DB — seed from demo data
+        await fetch(`${API}/candidates/seed`, { method: "POST" });
+        const seeded = await fetch(`${API}/candidates`).then(r => r.json()).catch(() => null);
+        if (seeded?.candidates) {
+          setCandidates(seeded.candidates.map(parseCandidate));
+        }
+      }
+    } catch { /* fallback: empty state */ }
+    setLoading(false);
   };
 
-  // Score single candidate
-  const scoreOne = async (c: Candidate, withAI: boolean) => {
-    if (withAI && !config.has_api_key) { setPage("settings"); return; }
-    setScoringId(c.id);
+  useEffect(() => { loadData(); }, []);
+
+  const addCandidate = async (c: Candidate) => {
     try {
-      const endpoint = withAI ? `${API}/score` : `${API}/score`;
-      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c) });
+      const res = await fetch(`${API}/candidates`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(c),
+      });
+      const saved = await res.json();
+      setCandidates(cs => [...cs, parseCandidate(saved)]);
+    } catch { setCandidates(cs => [...cs, c]); }
+  };
+
+  const removeCandidate = async (id: string) => {
+    setCandidates(cs => cs.filter(c => c.id !== id));
+    setResults(rs => { const n = new Map(rs); n.delete(id); return n; });
+    fetch(`${API}/candidates/${id}`, { method: "DELETE" }).catch(() => {});
+  };
+
+  const updateStatus = async (id: string, status: "pending" | "approved" | "rejected") => {
+    setCandidates(cs => cs.map(c => c.id === id ? { ...c, status } : c));
+    if (selectedCandidate?.id === id) {
+      setSelectedCandidate(prev => prev ? { ...prev, status } : null);
+    }
+    fetch(`${API}/candidates/${id}/status`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }),
+    }).catch(() => {});
+  };
+
+  // Score single candidate (persisted)
+  const scoreOne = async (candidateId: string) => {
+    if (config.llm_active && !config.has_api_key) { setPage("settings"); return; }
+    setScoringId(candidateId);
+    try {
+      const res = await fetch(`${API}/candidates/${candidateId}/score?use_llm=${config.llm_active}`, { method: "POST" });
       const data = await res.json();
-      setResults(rs => new Map(rs).set(c.id, data));
-      setViewResult(data);
-      setPage("result");
+      setResults(rs => new Map(rs).set(candidateId, data));
     } catch (e: any) { alert("Ошибка: " + e.message); }
     setScoringId(null);
   };
 
-  // Score all candidates
-  const scoreAll = async (withAI: boolean) => {
-    if (withAI && !config.has_api_key) { setPage("settings"); return; }
-    if (!candidates.length) return;
+  // Score all candidates in current tab (persisted + auto-distribute)
+  const scoreAll = async () => {
+    const tabCandidates = candidates.filter(c => c.status === activeTab);
+    if (!tabCandidates.length) return;
+    if (config.llm_active && !config.has_api_key) { setPage("settings"); return; }
     setScoring(true);
     try {
-      const res = await fetch(`${API}/score/batch`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidates }),
-      });
+      const res = await fetch(
+        `${API}/candidates/score-all?status=${activeTab}&use_llm=${config.llm_active}&auto_distribute=true`,
+        { method: "POST" },
+      );
       const data = await res.json();
       const newResults = new Map(results);
       for (const r of data.results) newResults.set(r.candidate_id, r);
       setResults(newResults);
+
+      // Reload candidates to reflect updated statuses from DB
+      const reload = await fetch(`${API}/candidates`).then(r => r.json()).catch(() => null);
+      if (reload?.candidates) setCandidates(reload.candidates.map(parseCandidate));
+
       setBatchResults(data.results);
-      setPage("result");
+      setPage("report");
     } catch (e: any) { alert("Ошибка: " + e.message); }
     setScoring(false);
   };
 
-  // Import JSON file
+  // Import JSON file (persisted)
   const importFile = async (file: File) => {
     try {
       const text = await file.text();
       const raw = JSON.parse(text);
       const arr = Array.isArray(raw) ? raw : [raw];
-      const newCandidates = arr.map((c: any) => ({
-        id: c.id || nextId(), full_name: c.full_name || "Без имени", age: c.age || 17, city: c.city || "",
+      const toCreate = arr.map((c: any) => ({
+        full_name: c.full_name || "Без имени", age: c.age || 17, city: c.city || "",
         school_name: c.school_name || "", gpa: c.gpa ?? null, education_level: c.education_level || "school",
         essay_motivation: c.essay_motivation || "", essay_leadership: c.essay_leadership || "", essay_challenge: c.essay_challenge || "",
-        activities: (c.activities || []).map((a: any) => ({ title: a.title || "", description: a.description || "", role: a.role || "", year: a.year || null, impact: a.impact || "" })),
-        languages: c.languages || [], skills: c.skills || [],
+        activities: c.activities || [], languages: c.languages || [], skills: c.skills || [],
         why_invision: c.why_invision || "", future_goals: c.future_goals || "", community_contribution: c.community_contribution || "",
+        status: "pending",
       }));
-      setCandidates(cs => [...cs, ...newCandidates]);
+      const res = await fetch(`${API}/candidates/bulk`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(toCreate),
+      });
+      const saved = await res.json();
+      setCandidates(cs => [...cs, ...saved.map(parseCandidate)]);
     } catch { alert("Ошибка чтения JSON файла"); }
+  };
+
+  const tabs: { id: Tab; label: string; icon: React.ReactNode; color: string }[] = [
+    { id: "pending", label: "На рассмотрении", icon: <Clock className="w-4 h-4" />, color: "text-amber-600" },
+    { id: "approved", label: "Одобренные", icon: <UserCheck className="w-4 h-4" />, color: "text-green-600" },
+    { id: "rejected", label: "Отклонённые", icon: <UserX className="w-4 h-4" />, color: "text-red-500" },
+  ];
+
+  const filteredCandidates = candidates.filter(c => c.status === activeTab);
+  const counts = {
+    pending: candidates.filter(c => c.status === "pending").length,
+    approved: candidates.filter(c => c.status === "approved").length,
+    rejected: candidates.filter(c => c.status === "rejected").length,
   };
 
   const sidebarItems = [
@@ -518,35 +766,59 @@ export default function App() {
           </div>
           <nav className="flex-1 px-2 py-3 space-y-0.5">
             {sidebarItems.map(item => (
-              <button key={item.id} onClick={() => { setPage(item.id); setViewResult(null); setBatchResults(null); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${page === item.id || (page === "result" && item.id === "candidates") ? "bg-orange-50 text-orange-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}>
+              <button key={item.id} onClick={() => { setPage(item.id); setSelectedCandidate(null); setBatchResults(null); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  page === item.id || (["profile", "report"].includes(page) && item.id === "candidates")
+                    ? "bg-orange-50 text-orange-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
+                }`}>
                 {item.icon}{item.label}
               </button>
             ))}
           </nav>
+          {/* Status counts */}
+          <div className="px-3 py-2 border-t border-gray-100 space-y-1">
+            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
+              <Clock className="w-3 h-3 text-amber-500" /> <span>{counts.pending} на рассм.</span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
+              <UserCheck className="w-3 h-3 text-green-500" /> <span>{counts.approved} одобрено</span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
+              <UserX className="w-3 h-3 text-red-400" /> <span>{counts.rejected} отклонено</span>
+            </div>
+          </div>
           <div className="px-3 py-3 border-t border-gray-100">
-            <div className={`text-[10px] px-2 py-1.5 rounded-md flex items-center gap-1.5 font-medium ${config.has_api_key ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
-              {config.has_api_key ? <><Sparkles className="w-3 h-3" /> {config.model}</> : <><Cpu className="w-3 h-3" /> Без AI</>}
+            <div className={`text-[10px] px-2 py-1.5 rounded-md flex items-center gap-1.5 font-medium ${
+              config.llm_active ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-gray-50 text-gray-500 border border-gray-200"
+            }`}>
+              {config.llm_active ? <><Sparkles className="w-3 h-3" /> AI: {config.model}</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
             </div>
           </div>
         </aside>
 
         {/* Main */}
         <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-white/60 backdrop-blur-sm">
-          {/* Viewing a single result */}
-          {page === "result" && viewResult && !batchResults && (
-            <ResultView result={viewResult} onBack={() => { setViewResult(null); setPage("candidates"); }} />
+          {/* Profile view */}
+          {page === "profile" && selectedCandidate && (
+            <ProfileView
+              candidate={selectedCandidate}
+              result={results.get(selectedCandidate.id)}
+              onBack={() => { setSelectedCandidate(null); setPage("candidates"); }}
+              onScore={() => scoreOne(selectedCandidate.id)}
+              onApprove={() => updateStatus(selectedCandidate.id, "approved")}
+              onReject={() => updateStatus(selectedCandidate.id, "rejected")}
+              scoring={scoringId === selectedCandidate.id}
+              llmActive={config.llm_active}
+            />
           )}
 
-          {/* Viewing batch results */}
-          {page === "result" && batchResults && !viewResult && (
+          {/* Batch results */}
+          {page === "report" && batchResults && (
             <BatchResultsView results={batchResults} onBack={() => { setBatchResults(null); setPage("candidates"); }}
-              onViewCandidate={(r) => { setBatchResults(null); setViewResult(r); }} />
-          )}
-
-          {/* Viewing single from batch */}
-          {page === "result" && viewResult && batchResults && (
-            <ResultView result={viewResult} onBack={() => { setViewResult(null); }} />
+              onViewCandidate={(r) => {
+                const c = candidates.find(cc => cc.id === r.candidate_id);
+                if (c) { setSelectedCandidate(c); setBatchResults(null); setPage("profile"); }
+              }} />
           )}
 
           {/* Settings */}
@@ -557,62 +829,76 @@ export default function App() {
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
-                <h1 className="text-lg font-bold text-gray-900">Анкеты кандидатов</h1>
-                <span className="text-xs text-gray-400">{candidates.length} {candidates.length === 1 ? "кандидат" : "кандидатов"}</span>
+                <h1 className="text-lg font-bold text-gray-900">Кандидаты</h1>
+                <span className="text-xs text-gray-400">{candidates.length} всего</span>
 
                 <div className="ml-auto flex items-center gap-2">
                   <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={e => { if (e.target.files?.[0]) importFile(e.target.files[0]); e.target.value = ""; }} />
                   <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
-                    <Upload className="w-3 h-3" /> Импорт JSON
+                    <Upload className="w-3 h-3" /> Импорт
                   </button>
                   <button onClick={() => setShowAdd(true)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5">
                     <Plus className="w-3 h-3" /> Добавить
                   </button>
 
-                  {/* Score all dropdown */}
-                  {candidates.length > 0 && (
-                    <div className="relative group">
-                      <button disabled={scoring} className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-md font-semibold hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5">
-                        {scoring ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3 h-3" />}
-                        Оценить всех <ChevronDown className="w-3 h-3" />
-                      </button>
-                      <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 w-48">
-                        <button onClick={() => scoreAll(false)} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg flex items-center gap-2">
-                          <Cpu className="w-4 h-4 text-gray-400" /> Без AI (эвристика)
-                        </button>
-                        <button onClick={() => scoreAll(true)} className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg flex items-center gap-2 border-t border-gray-100">
-                          <Sparkles className="w-4 h-4 text-orange-500" /> С AI ({config.model})
-                        </button>
-                      </div>
-                    </div>
+                  {filteredCandidates.length > 0 && (
+                    <button onClick={scoreAll} disabled={scoring}
+                      className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-md font-semibold hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5">
+                      {scoring ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
+                        config.llm_active ? <Sparkles className="w-3 h-3" /> : <Cpu className="w-3 h-3" />}
+                      Оценить всех
+                    </button>
                   )}
                 </div>
               </div>
 
+              {/* Tabs */}
+              <div className="px-6 pt-3 flex gap-1 border-b border-gray-200">
+                {tabs.map(tab => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px ${
+                      activeTab === tab.id
+                        ? `${tab.color} border-current bg-white`
+                        : "text-gray-400 border-transparent hover:text-gray-600"
+                    }`}>
+                    {tab.icon} {tab.label}
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-1 ${
+                      activeTab === tab.id ? "bg-current/10" : "bg-gray-100"
+                    }`}>{counts[tab.id]}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Table */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
-                {candidates.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
-                    <Users className="w-16 h-16 opacity-20" />
-                    <div className="text-center">
-                      <p className="text-sm font-medium">Нет кандидатов</p>
-                      <p className="text-xs mt-1">Добавьте кандидата или импортируйте JSON файл</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5"><Upload className="w-3 h-3" /> Импорт</button>
-                      <button onClick={() => setShowAdd(true)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5"><Plus className="w-3 h-3" /> Добавить</button>
-                    </div>
+                {filteredCandidates.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-3">
+                    {activeTab === "pending" ? <Clock className="w-12 h-12 opacity-20" /> :
+                     activeTab === "approved" ? <UserCheck className="w-12 h-12 opacity-20" /> :
+                     <UserX className="w-12 h-12 opacity-20" />}
+                    <p className="text-sm font-medium">
+                      {activeTab === "pending" ? "Нет кандидатов на рассмотрении" :
+                       activeTab === "approved" ? "Нет одобренных кандидатов" :
+                       "Нет отклонённых кандидатов"}
+                    </p>
+                    {activeTab === "pending" && (
+                      <div className="flex gap-2">
+                        <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5"><Upload className="w-3 h-3" /> Импорт</button>
+                        <button onClick={() => setShowAdd(true)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5"><Plus className="w-3 h-3" /> Добавить</button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                    <div className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_100px_120px_40px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase font-medium">
-                      <span>#</span><span>ФИО</span><span>Возр.</span><span>Город</span><span>Школа</span><span>GPA</span><span>Акт.</span><span>Оценка</span><span>Действия</span><span></span>
+                    <div className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_80px_100px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase font-medium">
+                      <span>#</span><span>ФИО</span><span>Возр.</span><span>Город</span><span>Школа</span><span>GPA</span><span>Акт.</span><span>Оценка</span><span>Действия</span>
                     </div>
-                    {candidates.map((c, i) => {
+                    {filteredCandidates.map((c, i) => {
                       const r = results.get(c.id);
                       const isScoring = scoringId === c.id;
                       return (
-                        <div key={c.id} className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_100px_120px_40px] gap-2 px-4 py-3 border-b border-gray-100 items-center hover:bg-gray-50 text-sm">
+                        <div key={c.id} onClick={() => { setSelectedCandidate(c); setPage("profile"); }}
+                          className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_80px_100px] gap-2 px-4 py-3 border-b border-gray-100 items-center hover:bg-orange-50/40 text-sm cursor-pointer transition-colors">
                           <span className="text-gray-400 text-xs">{i + 1}</span>
                           <span className="font-medium text-gray-800 truncate">{c.full_name}</span>
                           <span className="text-gray-600">{c.age}</span>
@@ -622,23 +908,35 @@ export default function App() {
                           <span className="text-gray-600">{c.activities.length}</span>
                           <span>
                             {r ? (
-                              <button onClick={() => { setViewResult(r); setPage("result"); }}
-                                className={`text-xs font-bold px-2 py-0.5 rounded cursor-pointer ${r.total_score >= 70 ? "bg-green-50 text-green-700" : r.total_score >= 45 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
-                                {Math.round(r.total_score)} /{r.scoring_method === "llm" ? " AI" : " H"}
-                              </button>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.total_score >= 70 ? "bg-green-50 text-green-700" : r.total_score >= 45 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                                {Math.round(r.total_score)}{r.scoring_method === "llm" ? " AI" : " H"}
+                              </span>
                             ) : isScoring ? (
                               <div className="w-4 h-4 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
                             ) : (
-                              <span className="text-xs text-gray-400">—</span>
+                              <span className="text-xs text-gray-300">—</span>
                             )}
                           </span>
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => scoreOne(c, false)} disabled={isScoring} title="Оценить (эвристика)"
-                              className="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-30"><Cpu className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => scoreOne(c, true)} disabled={isScoring} title={`Оценить AI (${config.model})`}
-                              className="p-1 rounded text-orange-400 hover:text-orange-700 hover:bg-orange-50 disabled:opacity-30"><Sparkles className="w-3.5 h-3.5" /></button>
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            {activeTab === "pending" && (
+                              <>
+                                <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
+                                  className="p-1 rounded text-green-400 hover:text-green-700 hover:bg-green-50"><CheckCircle className="w-3.5 h-3.5" /></button>
+                                <button onClick={() => updateStatus(c.id, "rejected")} title="Отклонить"
+                                  className="p-1 rounded text-red-300 hover:text-red-600 hover:bg-red-50"><XCircle className="w-3.5 h-3.5" /></button>
+                              </>
+                            )}
+                            {activeTab === "approved" && (
+                              <button onClick={() => updateStatus(c.id, "rejected")} title="Отклонить"
+                                className="p-1 rounded text-red-300 hover:text-red-600 hover:bg-red-50"><XCircle className="w-3.5 h-3.5" /></button>
+                            )}
+                            {activeTab === "rejected" && (
+                              <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
+                                className="p-1 rounded text-green-400 hover:text-green-700 hover:bg-green-50"><CheckCircle className="w-3.5 h-3.5" /></button>
+                            )}
+                            <button onClick={() => removeCandidate(c.id)} title="Удалить"
+                              className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
                           </div>
-                          <button onClick={() => removeCandidate(c.id)} className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
                         </div>
                       );
                     })}
@@ -660,8 +958,8 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
             <div className="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-gray-800">Оцениваем {candidates.length} кандидатов...</p>
-            <p className="text-xs text-gray-400 mt-1">Это может занять некоторое время</p>
+            <p className="text-sm font-medium text-gray-800">Оцениваем {filteredCandidates.length} кандидатов...</p>
+            <p className="text-xs text-gray-400 mt-1">{config.llm_active ? "Используем AI — это может занять время" : "Эвристика — быстрый анализ"}</p>
           </div>
         </div>
       )}

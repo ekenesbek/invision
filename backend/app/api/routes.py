@@ -19,6 +19,7 @@ from ..models.candidate import (
 from ..services.baseline_scorer import baseline_score_candidate
 from ..services.fairness import compute_fairness_report
 from ..services.scoring_engine import (
+    score_batch,
     score_batch_with_llm,
     score_candidate,
     score_candidate_with_llm,
@@ -57,6 +58,16 @@ async def score_single_candidate(candidate: CandidateProfile):
         raise HTTPException(status_code=500, detail=f"Scoring error: {str(e)}")
 
 
+@router.post("/score/heuristic", response_model=ScoringResult)
+async def score_single_candidate_heuristic(candidate: CandidateProfile):
+    """Score a single candidate using heuristic-only (no LLM)."""
+    try:
+        result = score_candidate(candidate)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Scoring error: {str(e)}")
+
+
 @router.post("/score/batch", response_model=BatchScoringResponse)
 async def score_multiple_candidates(request: BatchScoringRequest):
     """Score multiple candidates using LLM-first approach, rank them, and return statistics."""
@@ -64,6 +75,24 @@ async def score_multiple_candidates(request: BatchScoringRequest):
         raise HTTPException(status_code=400, detail="No candidates provided")
 
     results = await score_batch_with_llm(request.candidates)
+
+    shortlisted = sum(1 for r in results if r.recommendation in ("strong_recommend", "recommend"))
+
+    return BatchScoringResponse(
+        results=results,
+        total_candidates=len(results),
+        shortlisted=shortlisted,
+        statistics=_compute_batch_statistics(results),
+    )
+
+
+@router.post("/score/batch/heuristic", response_model=BatchScoringResponse)
+async def score_multiple_candidates_heuristic(request: BatchScoringRequest):
+    """Score multiple candidates using heuristic-only (no LLM)."""
+    if not request.candidates:
+        raise HTTPException(status_code=400, detail="No candidates provided")
+
+    results = score_batch(request.candidates)
 
     shortlisted = sum(1 for r in results if r.recommendation in ("strong_recommend", "recommend"))
 
