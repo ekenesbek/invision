@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from ..data.sample_candidates import SAMPLE_CANDIDATES
 from ..models.candidate import ActivityEntry, BatchScoringResponse, CandidateProfile
-from ..services.scoring_engine import score_batch
+from ..services.scoring_engine import score_batch_with_llm
 
 demo_router = APIRouter(prefix="/api/demo", tags=["demo"])
 
@@ -16,14 +16,24 @@ def _parse_candidate(data: dict) -> CandidateProfile:
     return CandidateProfile(**{**data, "activities": activities})
 
 
+@demo_router.get("/raw")
+async def get_raw_candidates():
+    """Return raw candidate profiles without scoring — for table display."""
+    candidates = [_parse_candidate(c) for c in SAMPLE_CANDIDATES]
+    return [c.model_dump() for c in candidates]
+
+
 @demo_router.get("/candidates", response_model=BatchScoringResponse)
 async def get_demo_results():
-    """Return pre-scored sample candidates for demonstration."""
+    """Return scored sample candidates for demonstration.
+
+    Uses LLM-first scoring when API key is available, falls back to heuristics.
+    """
     candidates = [_parse_candidate(c) for c in SAMPLE_CANDIDATES]
-    results = score_batch(candidates)
+    results = await score_batch_with_llm(candidates)
 
     shortlisted = sum(1 for r in results if r.recommendation in ("strong_recommend", "recommend"))
-    avg_score = sum(r.total_score for r in results) / len(results)
+    avg_score = sum(r.total_score for r in results) / len(results) if results else 0
     ai_flagged = sum(1 for r in results if r.ai_detection.is_likely_ai_generated)
 
     score_distribution = {

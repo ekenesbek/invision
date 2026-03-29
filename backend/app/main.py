@@ -1,8 +1,14 @@
 """FastAPI application entry point."""
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+load_dotenv()
+
+from .api.config import config_router
 from .api.demo import demo_router
 from .api.routes import router
 
@@ -22,6 +28,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(demo_router)
+app.include_router(config_router)
 
 
 @app.get("/")

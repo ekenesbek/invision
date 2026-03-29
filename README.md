@@ -11,86 +11,110 @@
 - **Скоринг** по 6 критериям с весами (0–100 баллов)
 - **Ранжирование** кандидатов от лучшего к худшему
 - **Рекомендацию**: «Настоятельно рекомендован» / «Рекомендован» / «Требует рассмотрения» / «Не рекомендован»
-- **Детекцию AI-генерации** в эссе (17+ эвристик)
+- **Детекцию AI-генерации** в эссе (17+ эвристик + LLM-анализ)
 - **Объяснение** каждой оценки (Explainable AI) — ключевые сигналы, факторы, индикаторы
+- **Baseline сравнение** — сколько выигрывает AI-скоринг vs наивные правила
+- **Fairness-аудит** — распределение баллов по городам, школам, GPA-группам
 
 ## Архитектура
 
 ```
-┌─────────────────────────────────────────────────┐
-│              Frontend (React + Vite)             │
-│  Dashboard приёмной комиссии                     │
-│  - Рейтинг кандидатов                            │
-│  - Детализация по критериям                      │
-│  - AI-детекция                                   │
-│  - Сильные стороны / зоны риска                  │
-└───────────────────┬─────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│             Frontend (React + Vite + Tailwind)        │
+│  Dark-theme dashboard приёмной комиссии                │
+│  - Рейтинг 20+ кандидатов с поиском и фильтрами      │
+│  - Детализация по 6 критериям с прогресс-барами       │
+│  - AI-детекция + baseline сравнение                   │
+│  - LLM-анализ (скрытые сильные стороны, вопросы)      │
+│  - Экспорт CSV                                       │
+└───────────────────┬──────────────────────────────────┘
                     │ REST API
-┌───────────────────┴─────────────────────────────┐
-│              Backend (FastAPI)                    │
-│                                                  │
-│  ┌─────────────┐  ┌─────────────────────────┐   │
-│  │ API Routes  │  │ Scoring Engine           │   │
-│  │ /api/score  │──│  - Weighted multi-criteria│   │
-│  │ /api/batch  │  │  - Ranking & shortlisting │   │
-│  └─────────────┘  └────────┬────────────────┘   │
-│                             │                    │
-│  ┌──────────────────────────┴───────────────┐   │
-│  │         NLP Text Analyzer                 │   │
-│  │  - Leadership marker detection (RU/EN)    │   │
-│  │  - Growth trajectory analysis             │   │
-│  │  - Motivation & passion scoring           │   │
-│  │  - AI-generated text detection            │   │
-│  │  - Text depth & specificity analysis      │   │
-│  │  - Vocabulary richness & sentence variety │   │
-│  └──────────────────────────────────────────┘   │
-│                                                  │
-│  ┌──────────────────────────────────────────┐   │
-│  │    LLM Analyzer (Optional, OpenAI API)    │   │
-│  │  - Qualitative analysis                   │   │
-│  │  - Interview question recommendations     │   │
-│  └──────────────────────────────────────────┘   │
-└──────────────────────────────────────────────────┘
+┌───────────────────┴──────────────────────────────────┐
+│             Backend (FastAPI + Python)                 │
+│                                                       │
+│  ┌──────────────────────────────────────────────┐    │
+│  │          Scoring Engine (LLM-first)           │    │
+│  │  1. Try LLM (OpenAI gpt-4o-mini)             │    │
+│  │  2. Fallback: Heuristic keyword engine        │    │
+│  │  3. Always compute: baseline score            │    │
+│  └──────────────────────────────────────────────┘    │
+│                                                       │
+│  ┌───────────────┐  ┌───────────────────────────┐    │
+│  │ Text Analyzer │  │ Baseline Scorer            │    │
+│  │ 50+ RU/EN     │  │ GPA(40%) + Activities(30%) │    │
+│  │ markers       │  │ + Word count(30%)          │    │
+│  └───────────────┘  └───────────────────────────┘    │
+│                                                       │
+│  ┌───────────────┐  ┌───────────────────────────┐    │
+│  │ AI Detector   │  │ Fairness Audit             │    │
+│  │ 17+ heuristics│  │ Bias по городам, школам,    │    │
+│  │ + LLM check   │  │ GPA-группам               │    │
+│  └───────────────┘  └───────────────────────────┘    │
+└──────────────────────────────────────────────────────┘
 ```
+
+## Scoring: LLM-first с Heuristic Fallback
+
+Система использует **двухуровневую архитектуру** скоринга:
+
+| Уровень | Метод | Когда работает |
+|---------|-------|----------------|
+| **LLM** | OpenAI gpt-4o-mini | Если задан `OPENAI_API_KEY` |
+| **Heuristic** | 50+ keyword markers (RU/EN) | Fallback, всегда доступен |
+| **Baseline** | GPA + кол-во активностей + длина эссе | Всегда (для сравнения) |
+
+Каждый результат содержит поле `scoring_method` ("llm" или "heuristic"), чтобы комиссия знала, какой движок выставил оценку.
 
 ## Критерии оценки (6 измерений)
 
 | Критерий | Вес | Что анализируется |
 |----------|-----|-------------------|
 | Лидерский потенциал | 25% | Лидерские маркеры в эссе + роли в активностях |
-| Траектория роста | 20% | Маркеры преодоления, адаптации, развития |
-| Мотивация и увлечённость | 20% | Маркеры страсти, цели, видения будущего |
-| Вклад и влияние | 15% | Маркеры реального impact + measurable результаты |
-| Аутентичность текста | 10% | Обратная корреляция с AI-детекцией |
+| Траектория роста | 20% | Преодоление трудностей, адаптация, развитие |
+| Мотивация и увлечённость | 20% | Страсть, цели, видение будущего |
+| Вклад и влияние | 15% | Реальный impact + measurable результаты |
+| Аутентичность текста | 10% | AI-детекция (эвристики + LLM) |
 | Академический профиль | 10% | GPA, языки, навыки |
 
 ## Детекция AI-генерации
 
-Эвристический анализатор проверяет:
-- **17+ типичных AI-фраз** на русском и английском ("in today's rapidly", "holistic approach", "multifaceted", etc.)
+Многоуровневая система проверки:
+- **17+ типичных AI-фраз** на русском и английском
 - **Вариативность предложений** — AI генерирует предложения похожей длины
 - **Лексическое разнообразие** — аномально высокое TTR
 - **Глубина текста** — отсутствие конкретных деталей, имён, чисел
-- **Структурированность** — подозрительно ровная структура
+- **LLM-анализ** — при наличии API ключа, дополнительная проверка GPT
+
+## Fairness & Bias Audit
+
+Система анализирует распределение баллов по группам:
+- **По городам** — выявление географического bias
+- **По типу школы** — НИШ vs лицей vs СОШ
+- **По GPA-диапазону** — корреляция GPA с итоговым баллом
+- **Автоматические флаги** — предупреждения о потенциальных bias
+
+API endpoint: `GET /api/fairness`
 
 ## Быстрый старт
 
 ### Требования
 - Python 3.11+
 - Node.js 18+
+- (Опционально) OpenAI API key для LLM-скоринга
 
 ### 1. Backend
 
 ```bash
 cd backend
 python3 -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate
 pip install -r requirements.txt
+
+# Опционально: для LLM-скоринга
+export OPENAI_API_KEY=your-key-here
+
 uvicorn app.main:app --reload --port 8000
 ```
-
-API доступен на http://localhost:8000
-Swagger docs: http://localhost:8000/docs
 
 ### 2. Frontend
 
@@ -100,60 +124,44 @@ npm install
 npm run dev
 ```
 
-Dashboard доступен на http://localhost:3000
-
-### 3. (Опционально) LLM-анализ
-
-Для расширенного качественного анализа задайте переменную окружения:
-
-```bash
-export OPENAI_API_KEY=your-key-here
-```
-
-Система работает полностью без LLM — эвристический движок является основным.
+Dashboard: http://localhost:3000
+API Docs: http://localhost:8000/docs
 
 ## API Endpoints
 
-### `POST /api/score`
-Оценить одного кандидата. Принимает JSON с профилем, возвращает детальный скоринг.
+| Метод | URL | Описание |
+|-------|-----|----------|
+| `POST` | `/api/score` | Оценить одного кандидата (LLM-first) |
+| `POST` | `/api/score/batch` | Оценить и ранжировать нескольких кандидатов |
+| `GET` | `/api/demo/candidates` | Демо: 20 предзаполненных кандидатов |
+| `GET` | `/api/baseline/compare` | Сравнение baseline vs heuristic vs LLM |
+| `GET` | `/api/fairness` | Fairness-аудит по демо-данным |
+| `GET` | `/api/health` | Health check |
 
-### `POST /api/score/batch`
-Оценить и ранжировать нескольких кандидатов. Возвращает список с рангами и статистику.
+## Датасет (20 кандидатов)
 
-### `GET /api/demo/candidates`
-Демо-режим: возвращает 6 предзаполненных кандидатов с оценками.
-
-### `GET /api/health`
-Проверка состояния сервиса.
-
-## Пример запроса
-
-```bash
-curl -X POST http://localhost:8000/api/score \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Тест Кандидат",
-    "age": 17,
-    "education_level": "school",
-    "essay_motivation": "Я хочу создавать технологии...",
-    "essay_leadership": "Я организовал хакатон...",
-    "essay_challenge": "Было трудно, но я справился..."
-  }'
-```
+| Тип | Кол-во | Описание |
+|-----|--------|----------|
+| Strong (80-95) | 6 | Реальные лидеры с impact |
+| Good (55-75) | 5 | Хорошие кандидаты с потенциалом |
+| AI-generated | 4 | Эссе написаны ChatGPT — флагуются |
+| Weak (20-40) | 3 | Минимальные заявки |
+| Edge cases | 2 | Низкий GPA + высокий impact, и наоборот |
 
 ## Данные
 
 Система использует **только данные из заявки кандидата**:
 - Анкетные данные (возраст, город, образование, GPA)
-- Эссе (мотивация, лидерство, преодоление трудностей)
-- Активности и достижения
+- 3 эссе (мотивация, лидерство, преодоление трудностей)
+- Активности и достижения с ролями и impact
 - Навыки и языки
+- Короткие ответы (почему inVision U, цели, вклад)
 
 **Не используются**: демографические, расовые, социально-экономические данные, данные из соцсетей.
 
 ## Приватность и безопасность
 
-- Данные обрабатываются локально, не передаются третьим сторонам (кроме опционального LLM)
+- Данные обрабатываются локально (кроме опционального LLM-вызова)
 - Нет сбора данных из социальных сетей
 - Нет использования демографических признаков для скоринга
 - Все оценки прозрачны и объяснимы
@@ -161,19 +169,19 @@ curl -X POST http://localhost:8000/api/score \
 
 ## Ограничения
 
-- Эвристическая AI-детекция не заменяет экспертную оценку — это сигнал для комиссии
-- NLP-анализ на основе маркеров может не улавливать все нюансы текста
-- Система оптимизирована для русского и английского языков
-- Скоринг работает лучше при наличии всех полей заявки (эссе + активности + академические данные)
+- Без OpenAI API ключа работает только эвристический движок
+- Эвристический NLP оптимизирован для русского и английского
+- AI-детекция — эвристическая, не заменяет экспертную оценку
 - Веса критериев настроены экспертно и могут требовать калибровки
+- Датасет синтетический — для продакшена нужны реальные данные
 
 ## Стек технологий
 
-- **Backend**: Python, FastAPI, scikit-learn, NumPy
-- **Frontend**: React 18, Vite
-- **NLP**: Custom heuristic analyzer (RU/EN)
-- **AI Detection**: Multi-signal heuristic engine
-- **Optional**: OpenAI API для качественного анализа
+- **Backend**: Python 3.11, FastAPI, Pydantic, scikit-learn
+- **Frontend**: React 18, Vite, Tailwind CSS v4, TypeScript, Motion
+- **LLM**: OpenAI gpt-4o-mini (опционально)
+- **NLP**: Custom heuristic analyzer (RU/EN, 50+ markers)
+- **AI Detection**: Multi-signal heuristic + LLM verification
 
 ## Структура проекта
 
@@ -181,18 +189,32 @@ curl -X POST http://localhost:8000/api/score \
 invision/
 ├── backend/
 │   ├── app/
-│   │   ├── api/          # FastAPI routes
-│   │   ├── models/       # Pydantic models
-│   │   ├── services/     # Scoring engine, NLP, LLM
-│   │   ├── data/         # Sample candidates
-│   │   └── main.py       # App entry point
+│   │   ├── api/
+│   │   │   ├── routes.py          # API endpoints
+│   │   │   └── demo.py            # Demo data endpoint
+│   │   ├── models/
+│   │   │   └── candidate.py       # Pydantic models
+│   │   ├── services/
+│   │   │   ├── scoring_engine.py  # LLM-first scorer + fallback
+│   │   │   ├── llm_analyzer.py    # OpenAI integration
+│   │   │   ├── text_analyzer.py   # Heuristic NLP (50+ markers)
+│   │   │   ├── baseline_scorer.py # Naive baseline for comparison
+│   │   │   └── fairness.py        # Bias audit
+│   │   ├── data/
+│   │   │   └── sample_candidates.py  # 20 demo candidates
+│   │   └── main.py
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx       # Dashboard UI
-│   │   ├── index.css     # Styles
-│   │   └── main.jsx      # Entry point
-│   ├── index.html
+│   │   ├── App.tsx                # Dashboard with search/filters
+│   │   ├── components/ui/         # shadcn-compatible components
+│   │   ├── lib/utils.ts           # Tailwind utilities
+│   │   ├── index.css              # Tailwind + custom styles
+│   │   └── main.tsx
+│   ├── components.json            # shadcn config
+│   ├── tsconfig.json
 │   └── package.json
-└── README.md
+├── README.md
+├── TODO.md
+└── Dockerfile
 ```
