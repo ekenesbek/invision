@@ -21,16 +21,14 @@ class ConfigUpdate(BaseModel):
 
 class ConfigResponse(BaseModel):
     has_api_key: bool
+    masked_key: str = ""
     model: str
     available_models: list[str]
 
 
 AVAILABLE_MODELS = [
-    "gpt-4o-mini",
-    "gpt-4o",
-    "gpt-4.1-mini",
-    "gpt-4.1-nano",
     "gpt-4.1",
+    "o4-mini",
 ]
 
 
@@ -40,8 +38,14 @@ def get_config() -> dict:
     key = _config.get("openai_api_key") or os.getenv("OPENAI_API_KEY", "")
     return {
         "openai_api_key": key,
-        "model": _config.get("model", "gpt-4o-mini"),
+        "model": _config.get("model", "gpt-4.1"),
     }
+
+
+def _mask_key(key: str) -> str:
+    if not key or len(key) < 8:
+        return ""
+    return key[:5] + "***" + key[-3:]
 
 
 @config_router.get("", response_model=ConfigResponse)
@@ -49,6 +53,7 @@ async def get_current_config():
     cfg = get_config()
     return ConfigResponse(
         has_api_key=bool(cfg["openai_api_key"]),
+        masked_key=_mask_key(cfg["openai_api_key"]),
         model=cfg["model"],
         available_models=AVAILABLE_MODELS,
     )
@@ -63,6 +68,20 @@ async def update_config(update: ConfigUpdate):
     cfg = get_config()
     return ConfigResponse(
         has_api_key=bool(cfg["openai_api_key"]),
+        masked_key=_mask_key(cfg["openai_api_key"]),
+        model=cfg["model"],
+        available_models=AVAILABLE_MODELS,
+    )
+
+
+@config_router.delete("/key")
+async def remove_api_key():
+    _config["openai_api_key"] = ""
+    cfg = get_config()
+    # If env var is set, we can't remove it, but we clear the runtime override
+    return ConfigResponse(
+        has_api_key=bool(cfg["openai_api_key"]),
+        masked_key=_mask_key(cfg["openai_api_key"]),
         model=cfg["model"],
         available_models=AVAILABLE_MODELS,
     )

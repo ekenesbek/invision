@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models.db_models import CandidateDB, ScoringResultDB
+from .models.db_models import CandidateDB, ChatMessageDB, ScoringResultDB
 
 
 # ─── Candidates ─────────────────────────────────────────
@@ -81,3 +81,27 @@ async def get_scoring_result(db: AsyncSession, candidate_id: str) -> ScoringResu
 async def get_all_scoring_results(db: AsyncSession) -> list[ScoringResultDB]:
     result = await db.execute(select(ScoringResultDB).order_by(ScoringResultDB.created_at.desc()))
     return list(result.scalars().all())
+
+
+# ─── Chat Messages ──────────────────────────────────────
+
+async def get_chat_history(db: AsyncSession, candidate_id: str) -> list[ChatMessageDB]:
+    result = await db.execute(
+        select(ChatMessageDB)
+        .where(ChatMessageDB.candidate_id == candidate_id)
+        .order_by(ChatMessageDB.created_at)
+    )
+    return list(result.scalars().all())
+
+
+async def add_chat_message(db: AsyncSession, candidate_id: str, role: str, content: str) -> ChatMessageDB:
+    msg = ChatMessageDB(candidate_id=candidate_id, role=role, content=content)
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+    return msg
+
+
+async def clear_chat_history(db: AsyncSession, candidate_id: str) -> None:
+    await db.execute(delete(ChatMessageDB).where(ChatMessageDB.candidate_id == candidate_id))
+    await db.commit()

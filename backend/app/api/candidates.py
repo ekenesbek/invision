@@ -7,11 +7,14 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..crud import (
+    add_chat_message,
+    clear_chat_history,
     create_candidate,
     create_candidates_bulk,
     delete_candidate,
     get_all_candidates,
     get_candidate,
+    get_chat_history,
     get_scoring_result,
     get_all_scoring_results,
     save_scoring_result,
@@ -194,14 +197,17 @@ async def score_all_candidates(
     status: str = "pending",
     use_llm: bool = True,
     auto_distribute: bool = True,
+    generate_report: bool = True,
     db: AsyncSession = Depends(get_db),
 ):
-    """Score all candidates with a given status and optionally auto-distribute."""
+    """Score all candidates with a given status, auto-distribute, and generate AI reports."""
     import asyncio
+    import os
+    from ..api.config import get_config
 
     rows = await get_all_candidates(db, status=status)
     if not rows:
-        return {"results": [], "distributed": {}}
+        return {"results": [], "distributed": {}, "reports": {}}
 
     profiles = [_dict_to_profile(_db_to_dict(r)) for r in rows]
 
@@ -235,10 +241,167 @@ async def score_all_candidates(
 
     await db.commit()
 
+    # Generate AI reports for each candidate
+    reports = {}
+    if generate_report and use_llm:
+        cfg = get_config()
+        api_key = cfg.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
+        if api_key:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=api_key)
+            model = cfg.get("model", "gpt-4o-mini")
+
+            row_map = {r.id: r for r in rows}
+
+            async def gen_report(sr):
+                row = row_map.get(sr.candidate_id)
+                if not row:
+                    return sr.candidate_id, None
+                cd = _db_to_dict(row)
+                is_good = sr.total_score >= 55
+
+                prompt = f"""Ты — AI-ассистент приёмной комиссии inVision U.
+Кандидат: {cd['full_name']}, {cd['age']} лет, {cd['city']}
+Школа: {cd['school_name']}, GPA: {cd['gpa']}
+Балл: {sr.total_score}/100, Рекомендация: {sr.recommendation_label}
+Метод: {sr.scoring_method}
+Сильные стороны: {', '.join(sr.strengths)}
+Зоны для рассмотрения: {', '.join(sr.areas_for_review)}
+
+Эссе мотивация: {cd.get('essay_motivation', '')[:300]}
+Эссе лидерство: {cd.get('essay_leadership', '')[:300]}
+
+{'Кандидат рекомендован.' if is_good else 'Кандидат НЕ рекомендован.'}
+
+Напиши краткий отчёт для комиссии (3-5 предложений) и предложи 3 вопроса для интервью. Отвечай на русском."""
+
+                try:
+                    resp = await client.chat.completions.create(
+                        model=model,
+                        messages=[{"role": "user", "content": prompt}],
+                        max_tokens=500,
+                        temperature=0.7,
+                    )
+                    answer = resp.choices[0].message.content
+                    # Save as chat message
+                    await add_chat_message(db, sr.candidate_id, "assistant", f"📋 Автоматический отчёт:\n\n{answer}")
+                    return sr.candidate_id, answer
+                except Exception:
+                    return sr.candidate_id, None
+
+            report_tasks = [gen_report(r) for r in results]
+            report_results = await asyncio.gather(*report_tasks)
+            reports = {cid: text for cid, text in report_results if text}
+            await db.commit()
+
     return {
         "results": [r.model_dump() for r in results],
         "distributed": distributed,
+        "reports": reports,
     }
+
+
+class AskAIRequest(BaseModel):
+    question: str
+
+
+@candidates_router.post("/{candidate_id}/ask")
+async def ask_ai_about_candidate(candidate_id: str, req: AskAIRequest, db: AsyncSession = Depends(get_db)):
+    """Ask AI a question about a specific candidate."""
+    import os
+    from ..api.config import get_config
+
+    row = await get_candidate(db, candidate_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    cfg = get_config()
+    api_key = cfg.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="OpenAI API key not configured")
+
+    candidate_data = _db_to_dict(row)
+
+    # Get scoring result if available
+    sr = await get_scoring_result(db, candidate_id)
+    score_context = ""
+    if sr:
+        rd = sr.result_data
+        score_context = f"""
+Результат оценки:
+- Общий балл: {rd.get('total_score')}/100
+- Рекомендация: {rd.get('recommendation_label')}
+- Метод: {rd.get('scoring_method')}
+- Сильные стороны: {', '.join(rd.get('strengths', []))}
+- Зоны для рассмотрения: {', '.join(rd.get('areas_for_review', []))}
+- AI-детекция: {'Обнаружен' if rd.get('ai_detection', {}).get('is_likely_ai_generated') else 'Не обнаружен'}
+"""
+
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=api_key)
+    model = cfg.get("model", "gpt-4o-mini")
+
+    system_prompt = f"""Ты — AI-ассистент приёмной комиссии inVision U. Тебе предоставлены данные кандидата.
+Отвечай на вопросы сотрудника комиссии о кандидате. Будь конкретным, опирайся на данные.
+Отвечай на русском языке. Будь лаконичным но информативным.
+
+Данные кандидата:
+- ФИО: {candidate_data['full_name']}
+- Возраст: {candidate_data['age']}, Город: {candidate_data['city']}
+- Школа: {candidate_data['school_name']}, GPA: {candidate_data['gpa']}
+- Языки: {', '.join(candidate_data.get('languages', []))}
+- Навыки: {', '.join(candidate_data.get('skills', []))}
+- Активности: {'; '.join(a['title'] + ' (' + a['role'] + ')' for a in candidate_data.get('activities', []) if a.get('title'))}
+
+Эссе — Мотивация:
+{candidate_data.get('essay_motivation', 'Нет')}
+
+Эссе — Лидерство:
+{candidate_data.get('essay_leadership', 'Нет')}
+
+Эссе — Вызовы:
+{candidate_data.get('essay_challenge', 'Нет')}
+
+Почему inVision U: {candidate_data.get('why_invision', 'Нет')}
+Цели на 5 лет: {candidate_data.get('future_goals', 'Нет')}
+Вклад в сообщество: {candidate_data.get('community_contribution', 'Нет')}
+{score_context}"""
+
+    # Load chat history for context
+    history = await get_chat_history(db, candidate_id)
+    messages = [{"role": "system", "content": system_prompt}]
+    for msg in history:
+        messages.append({"role": msg.role, "content": msg.content})
+    messages.append({"role": "user", "content": req.question})
+
+    response = await client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=1000,
+        temperature=0.7,
+    )
+
+    answer = response.choices[0].message.content
+
+    # Persist both messages
+    await add_chat_message(db, candidate_id, "user", req.question)
+    await add_chat_message(db, candidate_id, "assistant", answer)
+
+    return {"answer": answer}
+
+
+@candidates_router.get("/{candidate_id}/chat")
+async def get_candidate_chat(candidate_id: str, db: AsyncSession = Depends(get_db)):
+    """Get chat history for a candidate."""
+    history = await get_chat_history(db, candidate_id)
+    return [{"role": m.role, "content": m.content} for m in history]
+
+
+@candidates_router.delete("/{candidate_id}/chat")
+async def clear_candidate_chat(candidate_id: str, db: AsyncSession = Depends(get_db)):
+    """Clear chat history for a candidate."""
+    await clear_chat_history(db, candidate_id)
+    return {"cleared": True}
 
 
 @candidates_router.post("/seed")

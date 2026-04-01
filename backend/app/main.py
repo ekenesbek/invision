@@ -2,10 +2,13 @@
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 load_dotenv()
 
@@ -13,6 +16,7 @@ from .api.candidates import candidates_router
 from .api.config import config_router
 from .api.demo import demo_router
 from .api.routes import router
+from .api.talents import talents_router
 from .database import init_db
 
 
@@ -31,7 +35,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,12 +45,26 @@ app.include_router(router)
 app.include_router(demo_router)
 app.include_router(config_router)
 app.include_router(candidates_router)
+app.include_router(talents_router)
 
 
-@app.get("/")
-async def root():
-    return {
-        "name": "inVision U AI Screening System",
-        "version": "1.0.0",
-        "docs": "/docs",
-    }
+# Serve frontend static files
+FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIR.exists():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file_path = FRONTEND_DIR / full_path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIR / "index.html")
+else:
+    @app.get("/")
+    async def root():
+        return {
+            "name": "inVision U AI Screening System",
+            "version": "1.0.0",
+            "docs": "/docs",
+        }

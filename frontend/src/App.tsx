@@ -4,7 +4,8 @@ import {
   BarChart3, Download, Cpu, Sparkles, X, Plus, Trash2,
   Settings, Eye, Zap, ChevronDown, Check, ArrowLeft,
   Upload, Table, CheckCircle, XCircle, Clock, FileText,
-  ChevronRight, UserCheck, UserX
+  ChevronRight, UserCheck, UserX, MessageCircle, Send,
+  HelpCircle, Lightbulb, Target, RotateCcw, ClipboardList, Search, Globe, ExternalLink, Star, RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -29,8 +30,14 @@ interface ScoringResult {
   scoring_method?: string; baseline_score?: number;
   llm_analysis?: { hidden_strengths?: string[]; concerns?: string[]; interview_questions?: string[]; };
 }
-interface ConfigState { has_api_key: boolean; model: string; available_models: string[]; llm_active: boolean; }
-type Page = "candidates" | "settings" | "profile" | "report";
+interface ConfigState { has_api_key: boolean; masked_key: string; model: string; available_models: string[]; llm_active: boolean; }
+type Page = "candidates" | "settings" | "profile" | "report" | "apply" | "talents";
+interface Talent {
+  id: number; source: string; external_id: string; full_name: string;
+  country: string; city: string; organization: string;
+  achievements: any[]; profile_url: string; ai_profile: any | null;
+  status: string; scraped_at: string | null;
+}
 type Tab = "pending" | "approved" | "rejected";
 
 // ─── Helpers ────────────────────────────────────────────
@@ -66,11 +73,75 @@ function ScoreCircle({ score, size = 90 }: { score: number; size?: number }) {
 
 // ─── Candidate Profile View ────────────────────────────
 
-function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, scoring, llmActive }: {
+interface ChatMsg { role: "user" | "assistant"; content: string; }
+
+function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, scoring, llmActive, hasApiKey }: {
   candidate: Candidate; result?: ScoringResult; onBack: () => void;
   onScore: () => void; onApprove: () => void; onReject: () => void;
-  scoring: boolean; llmActive: boolean;
+  scoring: boolean; llmActive: boolean; hasApiKey: boolean;
 }) {
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Load chat history on mount
+  useEffect(() => {
+    fetch(`${API}/candidates/${candidate.id}/chat`)
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setChatMessages(data); })
+      .catch(() => {});
+  }, [candidate.id]);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  const askAI = async (question: string) => {
+    if (!question.trim()) return;
+    setChatOpen(true);
+    setChatMessages(prev => [...prev, { role: "user", content: question }]);
+    setChatInput("");
+    setChatLoading(true);
+    try {
+      const res = await fetch(`${API}/candidates/${candidate.id}/ask`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = await res.json();
+      if (data.answer) {
+        setChatMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: "assistant", content: data.detail || "Ошибка" }]);
+      }
+    } catch {
+      setChatMessages(prev => [...prev, { role: "assistant", content: "Ошибка соединения с AI" }]);
+    }
+    setChatLoading(false);
+  };
+
+  const clearChat = async () => {
+    await fetch(`${API}/candidates/${candidate.id}/chat`, { method: "DELETE" }).catch(() => {});
+    setChatMessages([]);
+  };
+
+  // Preset questions based on score
+  const hasScore = !!result;
+  const isGood = hasScore && result!.total_score >= 55;
+  const presetQuestions = hasScore ? (
+    isGood ? [
+      { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Почему хороший кандидат?", q: "Объясни подробно, почему этот кандидат хороший? Какие его ключевые сильные стороны?" },
+      { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для интервью", q: "Предложи 5 вопросов для интервью с этим кандидатом, чтобы глубже раскрыть его потенциал" },
+      { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "На что обратить внимание?", q: "Какие потенциальные зоны риска у этого кандидата? На что обратить внимание при собеседовании?" },
+    ] : [
+      { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "Почему низкий балл?", q: "Объясни, почему у кандидата низкий балл? Какие основные проблемы в его анкете?" },
+      { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для проверки", q: "Предложи 5 вопросов для интервью, чтобы проверить, заслуживает ли кандидат второго шанса" },
+      { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Есть ли потенциал?", q: "Есть ли у этого кандидата скрытый потенциал, который не видно по баллам? Что может говорить в его пользу?" },
+    ]
+  ) : [
+    { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Оцени кандидата", q: "Дай краткую оценку этого кандидата на основе его анкеты. Каковы его сильные и слабые стороны?" },
+    { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для интервью", q: "Предложи 5 вопросов для интервью с этим кандидатом" },
+    { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "Рекомендация", q: "Стоит ли принять этого кандидата? Дай свою рекомендацию с обоснованием" },
+  ];
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
@@ -211,6 +282,91 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
           )}
 
           {result && <ReportSection result={result} />}
+        </div>
+
+        {/* Ask AI Section */}
+        <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-5 mb-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-orange-500" /> Ask AI
+            </h3>
+            <div className="flex items-center gap-2">
+              {chatMessages.length > 0 && (
+                <button onClick={clearChat} className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1">
+                  <RotateCcw className="w-3 h-3" /> Очистить
+                </button>
+              )}
+              <button onClick={() => setChatOpen(!chatOpen)}
+                className="text-xs text-orange-600 hover:text-orange-800 font-medium">
+                {chatOpen ? "Свернуть" : chatMessages.length > 0 ? `${chatMessages.length} сообщ.` : "Открыть"}
+              </button>
+            </div>
+          </div>
+
+          {/* Preset question buttons */}
+          {!hasApiKey ? (
+            <p className="text-xs text-gray-400 text-center py-2">Для Ask AI необходим OpenAI API ключ в настройках</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {presetQuestions.map((pq, i) => (
+                  <button key={i} onClick={() => askAI(pq.q)} disabled={chatLoading}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-orange-200 bg-white text-gray-700 hover:bg-orange-50 hover:border-orange-300 flex items-center gap-1.5 transition-colors disabled:opacity-50">
+                    {pq.icon} {pq.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Chat area */}
+              {(chatOpen || chatMessages.length > 0) && (
+                <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                  {/* Messages */}
+                  <div className="max-h-[400px] overflow-y-auto p-3 space-y-3">
+                    {chatMessages.length === 0 && !chatLoading && (
+                      <p className="text-xs text-gray-400 text-center py-4">Задайте вопрос об этом кандидате</p>
+                    )}
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                          msg.role === "user"
+                            ? "bg-orange-500 text-white rounded-br-sm"
+                            : "bg-gray-100 text-gray-700 rounded-bl-sm"
+                        }`}>
+                          {msg.role === "assistant" ? (
+                            <div className="whitespace-pre-line leading-relaxed">{msg.content}</div>
+                          ) : msg.content}
+                        </div>
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex justify-start">
+                        <div className="bg-gray-100 rounded-xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
+                          <div className="flex gap-1">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+
+                  {/* Input */}
+                  <div className="border-t border-gray-200 p-2 flex gap-2">
+                    <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAI(chatInput); } }}
+                      placeholder="Спросите AI о кандидате..."
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400" />
+                    <button onClick={() => askAI(chatInput)} disabled={chatLoading || !chatInput.trim()}
+                      className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center">
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -480,8 +636,9 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
 
 // ─── Settings Page ──────────────────────────────────────
 
-function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c: ConfigState) => void }) {
+function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; onUpdate: (c: ConfigState) => void; onNavigate: (p: Page) => void }) {
   const [key, setKey] = useState("");
+  const [showKeyInput, setShowKeyInput] = useState(!config.has_api_key);
   const [model, setModel] = useState(config.model);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -493,9 +650,22 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
     const res = await fetch(`${API}/config`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const data = await res.json();
     onUpdate({ ...data, llm_active: config.llm_active });
+    if (key) { setKey(""); setShowKeyInput(false); }
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const removeKey = async () => {
+    const res = await fetch(`${API}/config/key`, { method: "DELETE" });
+    const data = await res.json();
+    onUpdate({ ...data, llm_active: false });
+    setShowKeyInput(true);
+  };
+
+  const MODEL_LABELS: Record<string, string> = {
+    "gpt-4.1": "максимум качества",
+    "o4-mini": "быстрый, экономный",
   };
 
   return (
@@ -527,7 +697,7 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
             </button>
           </div>
           {!config.has_api_key && !config.llm_active && (
-            <p className="text-[11px] text-gray-400 mt-2">Для AI-режима необходим API ключ</p>
+            <p className="text-[11px] text-amber-600 mt-2">Для AI-режима необходим API ключ — настройте ниже</p>
           )}
           <p className="text-[11px] text-gray-400 mt-2">
             {config.llm_active
@@ -541,12 +711,25 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
           <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-orange-500" /> OpenAI API Key
           </h3>
-          <input type="password" value={key} onChange={e => setKey(e.target.value)}
-            placeholder={config.has_api_key ? "••••••••••••••••••• (уже задан)" : "sk-proj-..."}
-            className="w-full px-3 py-2.5 rounded-md border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white font-mono" />
+          {config.has_api_key && !showKeyInput ? (
+            <div className="flex items-center gap-2">
+              <div className="flex-1 px-3 py-2.5 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-700 font-mono">
+                {config.masked_key || "sk-***"}
+              </div>
+              <button onClick={removeKey}
+                className="p-2 rounded-md border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                title="Удалить ключ">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <input type="password" value={key} onChange={e => setKey(e.target.value)}
+              placeholder="sk-proj-..."
+              className="w-full px-3 py-2.5 rounded-md border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white font-mono" />
+          )}
           <div className="mt-2 flex items-center gap-2">
-            {config.has_api_key ? (
-              <span className="text-xs text-green-600 flex items-center gap-1"><Check className="w-3 h-3" /> Ключ задан</span>
+            {config.has_api_key && !showKeyInput ? (
+              <span className="text-xs text-green-600 flex items-center gap-1"><Check className="w-3 h-3" /> Ключ сохранён</span>
             ) : (
               <span className="text-xs text-gray-400">Вставьте ключ для AI-оценки</span>
             )}
@@ -565,11 +748,7 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
                   {model === m && <div className="w-2 h-2 rounded-full bg-orange-500" />}
                 </div>
                 <span className="text-sm text-gray-800 font-mono">{m}</span>
-                {m === "gpt-4o-mini" && <span className="text-[10px] text-gray-400 ml-auto">быстрый, дешёвый</span>}
-                {m === "gpt-4o" && <span className="text-[10px] text-gray-400 ml-auto">мощный</span>}
-                {m === "gpt-4.1-mini" && <span className="text-[10px] text-gray-400 ml-auto">новый, быстрый</span>}
-                {m === "gpt-4.1-nano" && <span className="text-[10px] text-gray-400 ml-auto">сверхбыстрый</span>}
-                {m === "gpt-4.1" && <span className="text-[10px] text-gray-400 ml-auto">максимум качества</span>}
+                {MODEL_LABELS[m] && <span className="text-[10px] text-gray-400 ml-auto">{MODEL_LABELS[m]}</span>}
                 <input type="radio" name="model" value={m} checked={model === m} onChange={() => setModel(m)} className="hidden" />
               </label>
             ))}
@@ -585,13 +764,514 @@ function SettingsPage({ config, onUpdate }: { config: ConfigState; onUpdate: (c:
   );
 }
 
+// ─── Public Application Form ─────────────────────────────
+
+function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
+  const [form, setForm] = useState({
+    full_name: "", age: "17", city: "", school_name: "", gpa: "",
+    essay_motivation: "", essay_leadership: "", essay_challenge: "",
+    why_invision: "", future_goals: "", community_contribution: "",
+    languages: "", skills: "", video_transcript: "",
+  });
+  const [acts, setActs] = useState<{ title: string; role: string; description: string; impact: string }[]>([{ title: "", role: "", description: "", impact: "" }]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState(0);
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+  const inp = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 bg-white transition-all";
+  const lbl = "block text-xs font-semibold text-gray-600 mb-1.5";
+  const txtarea = inp + " min-h-[120px] resize-y";
+
+  const charCount = (text: string, max: number) => (
+    <span className={`text-[10px] ${text.length > max ? "text-red-500" : "text-gray-400"}`}>{text.length}/{max}</span>
+  );
+
+  const submit = async () => {
+    if (!form.full_name.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch(`${API}/candidates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: form.full_name,
+          age: parseInt(form.age) || 17,
+          city: form.city,
+          school_name: form.school_name,
+          gpa: form.gpa ? parseFloat(form.gpa) : null,
+          education_level: "school",
+          essay_motivation: form.essay_motivation,
+          essay_leadership: form.essay_leadership,
+          essay_challenge: form.essay_challenge,
+          why_invision: form.why_invision,
+          future_goals: form.future_goals,
+          community_contribution: form.community_contribution,
+          video_transcript: form.video_transcript,
+          activities: acts.filter(a => a.title).map(a => ({ title: a.title, description: a.description, role: a.role, year: null, impact: a.impact })),
+          languages: form.languages.split(",").map(s => s.trim()).filter(Boolean),
+          skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
+          status: "pending",
+        }),
+      });
+      setSubmitted(true);
+      onSubmitted();
+    } catch { alert("Ошибка отправки"); }
+    setSubmitting(false);
+  };
+
+  if (submitted) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-md">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Заявка отправлена!</h2>
+          <p className="text-sm text-gray-500 mb-6">Спасибо за подачу заявки в inVision U. Наша команда рассмотрит вашу анкету и свяжется с вами.</p>
+          <button onClick={() => { setSubmitted(false); setStep(0); setForm({ full_name: "", age: "17", city: "", school_name: "", gpa: "", essay_motivation: "", essay_leadership: "", essay_challenge: "", why_invision: "", future_goals: "", community_contribution: "", languages: "", skills: "", video_transcript: "" }); setActs([{ title: "", role: "", description: "", impact: "" }]); }}
+            className="px-5 py-2.5 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 text-sm">
+            Подать ещё одну заявку
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const steps = [
+    { title: "Личные данные", icon: <Users className="w-4 h-4" /> },
+    { title: "Образование и навыки", icon: <GraduationCap className="w-4 h-4" /> },
+    { title: "Эссе", icon: <FileText className="w-4 h-4" /> },
+    { title: "О вас и inVision", icon: <Target className="w-4 h-4" /> },
+  ];
+
+  const canNext = step === 0 ? form.full_name.trim() !== "" : true;
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-6">
+        <h1 className="text-xl font-bold mb-1">Подача заявки в inVision U</h1>
+        <p className="text-sm text-orange-100">Заполните анкету для участия в отборе. Все поля важны для оценки вашей кандидатуры.</p>
+      </div>
+
+      {/* Steps indicator */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center gap-1 max-w-3xl">
+          {steps.map((s, i) => (
+            <div key={i} className="flex items-center flex-1">
+              <button onClick={() => setStep(i)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  step === i ? "bg-orange-500 text-white" : i < step ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-400"
+                }`}>
+                {s.icon} <span className="hidden sm:inline">{s.title}</span>
+              </button>
+              {i < steps.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? "bg-orange-300" : "bg-gray-200"}`} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Form content */}
+      <div className="px-6 py-6 max-w-3xl mx-auto">
+        <AnimatePresence mode="wait">
+          <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
+
+            {/* Step 0: Personal */}
+            {step === 0 && (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Users className="w-4 h-4 text-orange-500" /> Личная информация</h3>
+                  <div><label className={lbl}>ФИО *</label><input className={inp} value={form.full_name} onChange={e => set("full_name", e.target.value)} placeholder="Айгерим Нурланова" /></div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><label className={lbl}>Возраст</label><input className={inp} type="number" min="14" max="25" value={form.age} onChange={e => set("age", e.target.value)} /></div>
+                    <div><label className={lbl}>Город</label><input className={inp} value={form.city} onChange={e => set("city", e.target.value)} placeholder="Алматы" /></div>
+                    <div><label className={lbl}>GPA (0-5)</label><input className={inp} type="number" step="0.1" min="0" max="5" value={form.gpa} onChange={e => set("gpa", e.target.value)} placeholder="4.2" /></div>
+                  </div>
+                  <div><label className={lbl}>Школа / учебное заведение</label><input className={inp} value={form.school_name} onChange={e => set("school_name", e.target.value)} placeholder="НИШ г. Алматы" /></div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 1: Education & Skills */}
+            {step === 1 && (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-orange-500" /> Языки и навыки</h3>
+                  <div><label className={lbl}>Языки (через запятую)</label><input className={inp} value={form.languages} onChange={e => set("languages", e.target.value)} placeholder="Казахский, Русский, English" /></div>
+                  <div><label className={lbl}>Навыки (через запятую)</label><input className={inp} value={form.skills} onChange={e => set("skills", e.target.value)} placeholder="Python, Leadership, Public Speaking" /></div>
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Target className="w-4 h-4 text-orange-500" /> Активности и достижения</h3>
+                    {acts.length < 8 && <button onClick={() => setActs(a => [...a, { title: "", role: "", description: "", impact: "" }])} className="text-xs text-orange-600 hover:underline flex items-center gap-1"><Plus className="w-3 h-3" /> Добавить</button>}
+                  </div>
+                  <p className="text-[11px] text-gray-400 -mt-2">Укажите кружки, проекты, волонтёрство, олимпиады и другие активности</p>
+                  {acts.map((a, i) => (
+                    <div key={i} className="border border-gray-100 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-400 font-mono">#{i + 1}</span>
+                        {acts.length > 1 && <button onClick={() => setActs(ar => ar.filter((_, j) => j !== i))} className="ml-auto text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className={inp} placeholder="Название (напр. Клуб робототехники)" value={a.title} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
+                        <input className={inp} placeholder="Ваша роль (напр. Основатель)" value={a.role} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} />
+                      </div>
+                      <input className={inp} placeholder="Описание деятельности" value={a.description} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, description: e.target.value } : x))} />
+                      <input className={inp} placeholder="Результат / достижение (напр. 2-е место на олимпиаде)" value={a.impact} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, impact: e.target.value } : x))} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Essays */}
+            {step === 2 && (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><FileText className="w-4 h-4 text-orange-500" /> Эссе</h3>
+                  <p className="text-[11px] text-gray-400 -mt-2">Пишите от себя, конкретно и честно. Расскажите реальные истории из вашего опыта.</p>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Мотивация: Почему вы хотите учиться в inVision U?</label>{charCount(form.essay_motivation, 2000)}</div>
+                    <textarea className={txtarea} value={form.essay_motivation} onChange={e => set("essay_motivation", e.target.value)} placeholder="Расскажите, что вас мотивирует, почему именно inVision U, какие цели вы хотите достичь..." />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Лидерство: Расскажите о ситуации, где вы проявили лидерство</label>{charCount(form.essay_leadership, 2000)}</div>
+                    <textarea className={txtarea} value={form.essay_leadership} onChange={e => set("essay_leadership", e.target.value)} placeholder="Опишите конкретную ситуацию: что произошло, что вы сделали, какой был результат..." />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Вызовы: Самый сложный вызов, который вы преодолели</label>{charCount(form.essay_challenge, 2000)}</div>
+                    <textarea className={txtarea} value={form.essay_challenge} onChange={e => set("essay_challenge", e.target.value)} placeholder="С какой трудностью вы столкнулись? Как справились? Чему научились?" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: About & InVision */}
+            {step === 3 && (
+              <div className="space-y-5">
+                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-orange-500" /> О вас и inVision U</h3>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Почему именно inVision U?</label>{charCount(form.why_invision, 1000)}</div>
+                    <textarea className={inp + " min-h-[80px] resize-y"} value={form.why_invision} onChange={e => set("why_invision", e.target.value)} placeholder="Что особенного в inVision U для вас?" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Ваши цели на ближайшие 5 лет</label>{charCount(form.future_goals, 1000)}</div>
+                    <textarea className={inp + " min-h-[80px] resize-y"} value={form.future_goals} onChange={e => set("future_goals", e.target.value)} placeholder="Кем вы видите себя через 5 лет? Какие планы?" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Ваш вклад в сообщество inVision U</label>{charCount(form.community_contribution, 1000)}</div>
+                    <textarea className={inp + " min-h-[80px] resize-y"} value={form.community_contribution} onChange={e => set("community_contribution", e.target.value)} placeholder="Как вы планируете внести вклад в сообщество студентов?" />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between"><label className={lbl}>Видео-транскрипт (необязательно)</label>{charCount(form.video_transcript, 1500)}</div>
+                    <textarea className={inp + " min-h-[80px] resize-y"} value={form.video_transcript} onChange={e => set("video_transcript", e.target.value)} placeholder="Если вы записали видео-презентацию, вставьте текст здесь..." />
+                  </div>
+                </div>
+
+                {/* Summary before submit */}
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+                  <h3 className="text-sm font-semibold text-orange-800 mb-2">Перед отправкой</h3>
+                  <ul className="text-xs text-orange-700 space-y-1">
+                    <li className="flex items-center gap-2">{form.full_name ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} ФИО: {form.full_name || "не указано"}</li>
+                    <li className="flex items-center gap-2">{form.essay_motivation.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе мотивация: {form.essay_motivation.length} символов</li>
+                    <li className="flex items-center gap-2">{form.essay_leadership.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе лидерство: {form.essay_leadership.length} символов</li>
+                    <li className="flex items-center gap-2">{form.essay_challenge.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе вызовы: {form.essay_challenge.length} символов</li>
+                    <li className="flex items-center gap-2">{acts.filter(a => a.title).length > 0 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Активности: {acts.filter(a => a.title).length}</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-6">
+          {step > 0 ? (
+            <button onClick={() => setStep(s => s - 1)} className="px-4 py-2.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1.5">
+              <ArrowLeft className="w-4 h-4" /> Назад
+            </button>
+          ) : <div />}
+          {step < 3 ? (
+            <button onClick={() => setStep(s => s + 1)} disabled={!canNext}
+              className="px-5 py-2.5 text-sm bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+              Далее <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button onClick={submit} disabled={submitting || !form.full_name.trim()}
+              className="px-6 py-2.5 text-sm bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
+              {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
+              Отправить заявку
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Talents Page ────────────────────────────────────────
+
+const SOURCE_LABELS: Record<string, string> = { imo: "IMO", ioi: "IOI", ipho: "IPhO", icho: "IChO", izho: "IZhO" };
+const SOURCE_COLORS: Record<string, string> = { imo: "bg-purple-100 text-purple-700", ioi: "bg-green-100 text-green-700", ipho: "bg-red-100 text-red-700", icho: "bg-yellow-100 text-yellow-700", izho: "bg-teal-100 text-teal-700" };
+const STATUS_LABELS: Record<string, string> = { discovered: "Найден", contacted: "Связались", applied: "Подал заявку", ignored: "Пропущен" };
+const STATUS_COLORS: Record<string, string> = { discovered: "bg-gray-100 text-gray-600", contacted: "bg-blue-100 text-blue-700", applied: "bg-green-100 text-green-700", ignored: "bg-red-100 text-red-500" };
+
+function TalentsPage() {
+  const [talents, setTalents] = useState<Talent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [scraping, setScraping] = useState(false);
+  const [enriching, setEnriching] = useState<number | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [expanded, setExpanded] = useState<number | null>(null);
+  const [stats, setStats] = useState<any>(null);
+
+  const load = async () => {
+    const [talentsRes, statsRes] = await Promise.all([
+      fetch(`${API}/talents`).then(r => r.json()).catch(() => ({ talents: [] })),
+      fetch(`${API}/talents/stats`).then(r => r.json()).catch(() => null),
+    ]);
+    setTalents(talentsRes.talents || []);
+    setStats(statsRes);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const scrape = async (sources: string[]) => {
+    setScraping(true);
+    try {
+      const res = await fetch(`${API}/talents/scrape`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sources, min_rating: 1400, min_year: 2019, max_results: 50 }),
+      });
+      const data = await res.json();
+      await load();
+      const total = data.total_new + data.total_updated;
+      alert(`Найдено: ${data.total_new} новых, ${data.total_updated} обновлено`);
+    } catch { alert("Ошибка скрапинга"); }
+    setScraping(false);
+  };
+
+  const enrich = async (talentId: number) => {
+    setEnriching(talentId);
+    try {
+      const res = await fetch(`${API}/talents/${talentId}/enrich`, { method: "POST" });
+      const data = await res.json();
+      setTalents(ts => ts.map(t => t.id === talentId ? data : t));
+    } catch { alert("Ошибка AI"); }
+    setEnriching(null);
+  };
+
+  const enrichAll = async () => {
+    setEnriching(-1);
+    try {
+      await fetch(`${API}/talents/enrich-all`, { method: "POST" });
+      await load();
+    } catch { alert("Ошибка AI"); }
+    setEnriching(null);
+  };
+
+  const updateStatus = async (talentId: number, status: string) => {
+    const res = await fetch(`${API}/talents/${talentId}/status`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+    setTalents(ts => ts.map(t => t.id === talentId ? data : t));
+  };
+
+  const filtered = sourceFilter === "all" ? talents : talents.filter(t => t.source === sourceFilter);
+
+  const bestAchievement = (t: Talent) => {
+    const medals = ["Gold", "Silver", "Bronze"];
+    for (const m of medals) {
+      const a = t.achievements.find(a => a.result === m);
+      if (a) return a;
+    }
+    return t.achievements[0];
+  };
+
+  if (loading) return <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin" /></div>;
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
+        <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Search className="w-5 h-5 text-orange-500" /> Поиск талантов</h1>
+        <span className="text-xs text-gray-400">{talents.length} найдено</span>
+        <div className="ml-auto flex items-center gap-2">
+          <button onClick={() => scrape(["codeforces", "imo", "ioi"])} disabled={scraping}
+            className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+            {scraping ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Globe className="w-3 h-3" />}
+            {scraping ? "Ищем..." : "Найти таланты"}
+          </button>
+          {talents.some(t => !t.ai_profile) && (
+            <button onClick={enrichAll} disabled={enriching !== null}
+              className="text-xs px-3 py-1.5 border border-orange-300 text-orange-600 rounded-md font-semibold hover:bg-orange-50 disabled:opacity-50 flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" /> AI профили
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      {stats && stats.total > 0 && (
+        <div className="px-6 py-2 border-b border-gray-100 flex items-center gap-4 text-[11px]">
+          {Object.entries(stats.by_source || {}).map(([src, count]) => (
+            <span key={src} className={`px-2 py-0.5 rounded-full font-medium ${SOURCE_COLORS[src] || "bg-gray-100"}`}>
+              {SOURCE_LABELS[src] || src}: {count as number}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Source filter */}
+      <div className="px-6 py-2 border-b border-gray-100 flex gap-1">
+        {["all", "codeforces", "imo", "ioi", "ipho", "icho", "izho"].map(s => (
+          <button key={s} onClick={() => setSourceFilter(s)}
+            className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
+              sourceFilter === s ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}>
+            {s === "all" ? "Все" : SOURCE_LABELS[s] || s}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="flex-1 overflow-y-auto">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <Search className="w-10 h-10 mb-3 opacity-30" />
+            <p className="text-sm">Нет найденных талантов</p>
+            <p className="text-xs mt-1">Нажмите "Найти таланты" для поиска</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {filtered.map((t, i) => {
+              const best = bestAchievement(t);
+              const isExpanded = expanded === t.id;
+              return (
+                <div key={t.id} className="hover:bg-orange-50/30 transition-colors">
+                  <div className="px-6 py-3 flex items-center gap-3 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : t.id)}>
+                    <span className="text-[10px] text-gray-400 w-6">{i + 1}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-800 truncate">{t.full_name}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${SOURCE_COLORS[t.source]}`}>
+                          {SOURCE_LABELS[t.source]}
+                        </span>
+                        {t.ai_profile?.estimated_strength === "high" && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
+                      </div>
+                      <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
+                        {t.city && <span>{t.city}</span>}
+                        {t.organization && <span>• {t.organization}</span>}
+                        {best && <span className="text-orange-600 font-medium">• {best.competition}: {best.result}{best.score ? ` (${best.score})` : ""}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {t.ai_profile?.potential_score_estimate && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          t.ai_profile.potential_score_estimate >= 70 ? "bg-green-100 text-green-700" :
+                          t.ai_profile.potential_score_estimate >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"
+                        }`}>{t.ai_profile.potential_score_estimate}</span>
+                      )}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full ${STATUS_COLORS[t.status]}`}>
+                        {STATUS_LABELS[t.status]}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </div>
+                  </div>
+
+                  {/* Expanded details */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden">
+                        <div className="px-6 pb-4 pl-12 space-y-3">
+                          {/* Achievements */}
+                          <div>
+                            <h4 className="text-[11px] font-semibold text-gray-500 uppercase mb-1">Достижения</h4>
+                            <div className="flex flex-wrap gap-1.5">
+                              {t.achievements.map((a, j) => (
+                                <span key={j} className={`text-[11px] px-2 py-1 rounded-md border ${
+                                  a.result === "Gold" ? "bg-yellow-50 border-yellow-300 text-yellow-800" :
+                                  a.result === "Silver" ? "bg-gray-50 border-gray-300 text-gray-700" :
+                                  a.result === "Bronze" ? "bg-orange-50 border-orange-300 text-orange-800" :
+                                  "bg-blue-50 border-blue-200 text-blue-700"
+                                }`}>
+                                  {a.competition}: {a.result} {a.score ? `(${a.score})` : ""}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* AI Profile */}
+                          {t.ai_profile && !t.ai_profile.error && (
+                            <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 space-y-2">
+                              <h4 className="text-[11px] font-semibold text-purple-700 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI Профиль</h4>
+                              <p className="text-xs text-gray-700">{t.ai_profile.summary}</p>
+                              {t.ai_profile.key_qualities && (
+                                <div className="flex flex-wrap gap-1">
+                                  {t.ai_profile.key_qualities.map((q: string, j: number) => (
+                                    <span key={j} className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">{q}</span>
+                                  ))}
+                                </div>
+                              )}
+                              {t.ai_profile.recommended_track && (
+                                <p className="text-[11px] text-gray-500">Рек. направление: <span className="font-medium text-purple-700">{t.ai_profile.recommended_track}</span></p>
+                              )}
+                              {t.ai_profile.outreach_suggestion && (
+                                <p className="text-[11px] text-gray-500">Как связаться: <span className="text-gray-700">{t.ai_profile.outreach_suggestion}</span></p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2">
+                            {t.profile_url && (
+                              <a href={t.profile_url} target="_blank" rel="noopener noreferrer"
+                                className="text-[11px] px-2.5 py-1 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1 no-underline">
+                                <ExternalLink className="w-3 h-3" /> Профиль
+                              </a>
+                            )}
+                            {!t.ai_profile && (
+                              <button onClick={() => enrich(t.id)} disabled={enriching === t.id}
+                                className="text-[11px] px-2.5 py-1 border border-purple-300 rounded-md text-purple-600 hover:bg-purple-50 disabled:opacity-50 flex items-center gap-1">
+                                {enriching === t.id ? <div className="w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                AI анализ
+                              </button>
+                            )}
+                            <button onClick={() => updateStatus(t.id, "contacted")}
+                              className="text-[11px] px-2.5 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-1">
+                              <MessageCircle className="w-3 h-3" /> Связаться
+                            </button>
+                            <button onClick={() => updateStatus(t.id, "ignored")}
+                              className="text-[11px] px-2.5 py-1 border border-gray-300 rounded-md text-gray-400 hover:text-red-500 hover:border-red-300">
+                              Пропустить
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ───────────────────────────────────────────
 
 export default function App() {
-  const [page, setPage] = useState<Page>("candidates");
+  const [page, setPage] = useState<Page>(() => window.location.hash === "#apply" ? "apply" : "candidates");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, model: "gpt-4o-mini", available_models: [], llm_active: false });
-  const [showAdd, setShowAdd] = useState(false);
+  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, masked_key: "", model: "gpt-4.1", available_models: [], llm_active: false });
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState(false);
   const [scoringId, setScoringId] = useState<string | null>(null);
@@ -614,7 +1294,7 @@ export default function App() {
   const loadData = async () => {
     try {
       const [cfg, data] = await Promise.all([
-        fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, model: "gpt-4o-mini", available_models: [] })),
+        fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, masked_key: "", model: "gpt-4.1", available_models: [] })),
         fetch(`${API}/candidates`).then(r => r.json()).catch(() => null),
       ]);
       setConfig({ ...cfg, llm_active: cfg.has_api_key });
@@ -689,7 +1369,7 @@ export default function App() {
     setScoring(true);
     try {
       const res = await fetch(
-        `${API}/candidates/score-all?status=${activeTab}&use_llm=${config.llm_active}&auto_distribute=true`,
+        `${API}/candidates/score-all?status=${activeTab}&use_llm=${config.llm_active}&auto_distribute=true&generate_report=${config.llm_active}`,
         { method: "POST" },
       );
       const data = await res.json();
@@ -744,8 +1424,28 @@ export default function App() {
 
   const sidebarItems = [
     { id: "candidates" as Page, label: "Кандидаты", icon: <Table className="w-4 h-4" /> },
+    { id: "talents" as Page, label: "Таланты", icon: <Search className="w-4 h-4" /> },
     { id: "settings" as Page, label: "Настройки", icon: <Settings className="w-4 h-4" /> },
   ];
+
+  // ─── Standalone public form ──────────────────────────────
+  if (page === "apply") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 font-sans">
+        <div className="max-w-4xl mx-auto flex flex-col min-h-screen">
+          {/* Public header */}
+          <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500"><GraduationCap className="h-4 w-4 text-white" /></div>
+            <div>
+              <div className="text-sm font-bold text-gray-800">inVision U</div>
+              <div className="text-[10px] text-gray-400">AI Screening System</div>
+            </div>
+          </header>
+          <ApplicationForm onSubmitted={() => {}} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-blue-50 overflow-hidden font-sans">
@@ -809,6 +1509,7 @@ export default function App() {
               onReject={() => updateStatus(selectedCandidate.id, "rejected")}
               scoring={scoringId === selectedCandidate.id}
               llmActive={config.llm_active}
+              hasApiKey={config.has_api_key}
             />
           )}
 
@@ -822,7 +1523,10 @@ export default function App() {
           )}
 
           {/* Settings */}
-          {page === "settings" && <SettingsPage config={config} onUpdate={setConfig} />}
+          {page === "settings" && <SettingsPage config={config} onUpdate={setConfig} onNavigate={setPage} />}
+
+          {/* Talents */}
+          {page === "talents" && <TalentsPage />}
 
           {/* Candidates table */}
           {page === "candidates" && (
@@ -837,9 +1541,9 @@ export default function App() {
                   <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
                     <Upload className="w-3 h-3" /> Импорт
                   </button>
-                  <button onClick={() => setShowAdd(true)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5">
-                    <Plus className="w-3 h-3" /> Добавить
-                  </button>
+                  <a href="/#apply" target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5 no-underline">
+                    <Plus className="w-3 h-3" /> Форма заявки
+                  </a>
 
                   {filteredCandidates.length > 0 && (
                     <button onClick={scoreAll} disabled={scoring}
@@ -884,7 +1588,7 @@ export default function App() {
                     {activeTab === "pending" && (
                       <div className="flex gap-2">
                         <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5"><Upload className="w-3 h-3" /> Импорт</button>
-                        <button onClick={() => setShowAdd(true)} className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5"><Plus className="w-3 h-3" /> Добавить</button>
+                        <a href="/#apply" target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5 no-underline"><Plus className="w-3 h-3" /> Форма заявки</a>
                       </div>
                     )}
                   </div>
@@ -948,10 +1652,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Add modal */}
-      <AnimatePresence>
-        {showAdd && <AddCandidateModal onAdd={addCandidate} onClose={() => setShowAdd(false)} />}
-      </AnimatePresence>
 
       {/* Scoring overlay */}
       {scoring && (
