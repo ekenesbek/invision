@@ -5,3 +5,14 @@ __pycache__/
 .env
 dist/
 .DS_Store
+
+# IDE
+.idea/
+
+# Claude Code
+.claude/
+
+# ML artifacts
+ml/model/
+ml/outputs/
+ml/data/

@@ -12,8 +12,13 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Model path — relative to project root
-MODEL_DIR = Path(__file__).resolve().parent.parent.parent.parent / "ml" / "model" / "InVisionEssayDetector"
+# Model path — check multiple locations (local dev + Docker)
+_base = Path(__file__).resolve().parent.parent.parent.parent
+_candidates = [
+    _base / "ml" / "model" / "InVisionEssayDetector",  # local dev
+    Path("/app/ml/model/InVisionEssayDetector"),         # Docker
+]
+MODEL_DIR = next((p for p in _candidates if p.exists()), _candidates[0])
 
 # Global model/tokenizer — loaded lazily on first call
 _tokenizer = None

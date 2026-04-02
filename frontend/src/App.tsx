@@ -23,12 +23,15 @@ interface Candidate {
 }
 interface DimensionData { name: string; score: number; weight: number; key_signals?: string[]; }
 interface AIDetection { is_likely_ai_generated: boolean; confidence: number; indicators: string[]; }
+interface MLEssayPrediction { prediction: string; confidence: number; human_prob: number; ai_prob: number; authenticity_score: number; }
+interface MLDetection { overall: MLEssayPrediction; per_essay: { motivation: MLEssayPrediction | null; leadership: MLEssayPrediction | null; challenge: MLEssayPrediction | null; }; ml_authenticity_score: number; }
 interface ScoringResult {
   candidate_id: string; candidate_name: string; total_score: number; rank: number;
   recommendation: string; recommendation_label: string; dimensions: DimensionData[];
   ai_detection: AIDetection; summary: string; strengths: string[]; areas_for_review: string[];
   scoring_method?: string; baseline_score?: number;
   llm_analysis?: { hidden_strengths?: string[]; concerns?: string[]; interview_questions?: string[]; };
+  ml_detection?: MLDetection | null;
 }
 interface ConfigState { has_api_key: boolean; masked_key: string; model: string; available_models: string[]; llm_active: boolean; }
 type Page = "candidates" | "settings" | "profile" | "report" | "apply" | "talents";
@@ -447,6 +450,43 @@ function ReportSection({ result }: { result: ScoringResult }) {
         ) : (
           <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 flex items-center gap-2 text-stone-700 text-sm">
             <ShieldCheck className="w-4 h-4" /> AI не обнаружен
+          </div>
+        )}
+
+        {/* ML Model: Per-Essay Breakdown */}
+        {result.ml_detection && result.ml_detection.per_essay && (
+          <div className="mt-3 rounded-lg bg-stone-50 border border-stone-200 p-3">
+            <div className="text-[11px] text-stone-600 uppercase font-semibold mb-2 flex items-center gap-1.5">
+              🤖 InVisionEssayDetector — анализ по эссе
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { key: "motivation" as const, label: "Мотивация" },
+                { key: "leadership" as const, label: "Лидерство" },
+                { key: "challenge" as const, label: "Вызовы" },
+              ]).map(({ key, label }) => {
+                const essay = result.ml_detection?.per_essay?.[key];
+                if (!essay) return <div key={key} className="text-center p-2 rounded bg-stone-100/50 border border-stone-100"><div className="text-[10px] text-stone-400 mb-1">{label}</div><div className="text-[10px] text-stone-400">—</div></div>;
+                const isAI = essay.prediction === "ai_generated";
+                return (
+                  <div key={key} className={`text-center p-2 rounded border ${isAI ? "bg-red-50/50 border-red-200/60" : "bg-emerald-50/50 border-emerald-200/60"}`}>
+                    <div className="text-[10px] text-stone-500 mb-1">{label}</div>
+                    <div className={`text-lg font-bold ${isAI ? "text-red-600" : "text-emerald-600"}`}>
+                      {Math.round(essay.authenticity_score)}
+                    </div>
+                    <div className={`text-[10px] ${isAI ? "text-red-500" : "text-emerald-500"}`}>
+                      {isAI ? "AI" : "Human"} ({Math.round(essay.confidence * 100)}%)
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-[10px] text-stone-400">Общая аутентичность (ML)</span>
+              <span className={`text-xs font-semibold ${(result.ml_detection.ml_authenticity_score ?? 0) > 50 ? "text-emerald-600" : "text-red-600"}`}>
+                {Math.round(result.ml_detection.ml_authenticity_score ?? 0)}/100
+              </span>
+            </div>
           </div>
         )}
       </div>

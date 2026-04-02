@@ -17,6 +17,9 @@ COPY --from=backend /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=backend /app .
 COPY --from=frontend-build /app/dist ./static
 
+# ML model
+COPY ml/model/InVisionEssayDetector ./ml/model/InVisionEssayDetector
+
 RUN pip install --no-cache-dir uvicorn
 
 EXPOSE 8000
