@@ -320,28 +320,31 @@ print(result)
 
 ## 9. Интеграция с backend
 
-Модель загружается один раз при старте сервера (не на каждый запрос):
+Модель загружается лениво (при первом вызове) через `backend/app/services/ml_detector.py`:
 
 ```python
-# backend/app/api/talents.py
+# ml_detector.py — lazy-загрузка, ищет модель в двух местах:
+# 1. ml/model/InVisionEssayDetector/  (локальная разработка)
+# 2. /app/ml/model/InVisionEssayDetector/  (Docker)
 
-from ml.scripts.infer import load_model, predict
+from backend.app.services.ml_detector import predict, predict_essays, is_available
 
-# Глобальная загрузка при старте
-_tokenizer, _model = load_model()
+# Один текст
+result = predict("Your essay text here...")
+# {"prediction": "human", "confidence": 0.94, "authenticity_score": 94.0, ...}
 
-def score_essay(essay_text: str) -> dict:
-    return predict(essay_text, _tokenizer, _model)
+# Все 3 эссе + overall
+result = predict_essays(
+    essay_motivation="...",
+    essay_leadership="...",
+    essay_challenge="...",
+)
+# {"overall": {...}, "per_essay": {"motivation": {...}, ...}, "ml_authenticity_score": 94.0}
 ```
 
-Результат `authenticity_score` добавляется к общему scoring JSON:
-```json
-{
-  "overall_score": 82,
-  "essay_authenticity": 9.1,
-  "leadership_signal": 7.5,
-  ...
-}
+Результат используется в `scoring_engine.py` для трёхслойной AI-детекции:
+- ML (40%) + LLM (40%) + Heuristic (20%) = blended confidence
+- Consensus bonus +20% если ML и LLM согласны
 ```
 
 ---

@@ -870,25 +870,67 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
 
 // ─── ML Playground ───────────────────────────────────────
 
-const DEMO_HUMAN_ESSAY = `Мен Алматыда өскен қарапайым отбасынан шыққанмын. Әкем такси жүргізуші, анам тігінші. Кішкентайымнан бері мен білімге құштар болдым — мектептегі кітапханада сағаттап отыратынмын.
+const DEMO_HUMAN_ESSAYS = [
+  {
+    label: "Робототехника (KZ)",
+    text: `Мен Алматыда өскен қарапайым отбасынан шыққанмын. Әкем такси жүргізуші, анам тігінші. Кішкентайымнан бері мен білімге құштар болдым — мектептегі кітапханада сағаттап отыратынмын.
 
 9-сыныпта мен мектебімізде робототехника кружогін аштым. Бастапқыда тек 3 досым қатысты. Бірінші робот жасағанда батарея жарылып, бетіме із қалды. Бірақ мен тоқтаған жоқпын. Жыл соңында кружокта 40 оқушы болды, біз облыстық олимпиадада 2-орын алдық.
 
-Бұл тәжірибе маған нағыз лидерлік — бұл жауаптарды білу емес, бірінші қадам жасау деп үйретті. Ешкім сенбесе де.`;
+Бұл тәжірибе маған нағыз лидерлік — бұл жауаптарды білу емес, бірінші қадам жасау деп үйретті. Ешкім сенбесе де.`,
+  },
+  {
+    label: "Medicine (Reddit HC3)",
+    text: `I asked my doctor why I was always tired, and he ran some blood tests. It turned out I had pretty severe iron deficiency. I never connected the dots — the ice cravings, the restless legs at night, the brain fog during lectures. He said it was common in women my age but still needed treatment. I started on iron supplements and within three weeks I actually felt like a different person. I could focus in class again. I'm sharing this because I spent two years thinking I was just lazy.`,
+  },
+  {
+    label: "College essay (real)",
+    text: `My grandmother's kitchen smelled like cumin and burned sugar. She never measured anything. A pinch of this, a handful of that. When I was thirteen, I tried to write down her recipes, and she laughed at me. "You don't cook from paper," she said. "You cook from here." She pointed at her chest. She passed away that winter, and I couldn't recreate a single dish. I spent the next summer failing — oversalted soups, flat bread, bitter stews. But somewhere around August, standing in her kitchen with flour on my face, I stopped following the notes I'd made and just... cooked. The lentil soup tasted almost right. Almost. That "almost" is what keeps me going — in cooking, in science, in everything.`,
+  },
+  {
+    label: "Open-domain (HC3)",
+    text: `Honestly? I think the biggest misconception about climate change is that individual action doesn't matter. Yeah, corporations are responsible for most emissions, but that doesn't mean your choices are meaningless. When I switched to cycling to campus, my roommate started too. Then her boyfriend. Now there's like fifteen of us. It's not going to save the planet, but it changed how we think. And I think that's how real change starts — not with a grand plan, but with one person doing something slightly inconvenient because they actually give a damn.`,
+  },
+];
 
-const DEMO_AI_ESSAY = `In today's rapidly evolving world, leadership plays a crucial role in shaping the trajectory of communities and organizations. It is worth noting that effective leaders must navigate the complexities of modern challenges while maintaining a holistic approach to problem-solving.
+const DEMO_AI_ESSAYS = [
+  {
+    label: "Leadership (generic AI)",
+    text: `In today's rapidly evolving world, leadership plays a crucial role in shaping the trajectory of communities and organizations. It is worth noting that effective leaders must navigate the complexities of modern challenges while maintaining a holistic approach to problem-solving.
 
 Furthermore, the ability to leverage diverse perspectives and foster synergy among team members is paramount in achieving sustainable outcomes. A truly transformative leader understands the importance of creating an inclusive environment that promotes innovation and collaboration.
 
-Moreover, my experience has taught me that leadership is not merely about directing others, but about inspiring a shared vision and empowering individuals to reach their full potential. This multifaceted understanding of leadership serves as a testament to the power of continuous personal growth and development.`;
+Moreover, my experience has taught me that leadership is not merely about directing others, but about inspiring a shared vision and empowering individuals to reach their full potential. This multifaceted understanding of leadership serves as a testament to the power of continuous personal growth and development.`,
+  },
+  {
+    label: "Education (ChatGPT)",
+    text: `Education is the cornerstone of personal and societal development. It empowers individuals with the knowledge and skills necessary to navigate the complexities of the modern world. Through education, people can develop critical thinking abilities, enhance their creativity, and build a foundation for lifelong learning. The importance of education cannot be overstated, as it serves as a catalyst for social mobility and economic growth. In conclusion, investing in education is investing in the future of humanity, and it is imperative that we continue to prioritize and improve educational systems worldwide.`,
+  },
+  {
+    label: "Technology (ChatGPT)",
+    text: `The rapid advancement of technology has fundamentally transformed the way we live, work, and communicate. From artificial intelligence to blockchain, these innovations have created unprecedented opportunities for growth and development. It is essential that we embrace these technological changes while also being mindful of their potential implications for privacy, security, and social equity. As we move forward, it is crucial to strike a balance between innovation and responsibility, ensuring that technology serves as a force for good in society. By fostering collaboration between technologists, policymakers, and citizens, we can harness the full potential of these advancements.`,
+  },
+  {
+    label: "Motivation (AI style)",
+    text: `Қазіргі заманда білім алу — бұл адамның өмірдегі ең маңызды инвестициясы. Білім адамға сыни ойлау қабілетін дамытуға, шығармашылық әлеуетін ашуға және қоғамға пайдалы мүше болуға мүмкіндік береді. Менің мотивациям — бұл отбасыма лайықты болашақ жасау және қоғамның дамуына үлес қосу. Мен сенімдімін, білім арқылы кез келген мақсатқа жетуге болады. Сондықтан мен inVision University-де оқуды өз өмірімдегі ең маңызды қадам деп санаймын.`,
+  },
+];
 
 function MLPlayground({ onBack }: { onBack: () => void }) {
   const [text, setText] = useState("");
   const [result, setResult] = useState<(MLEssayPrediction & { explanation?: string[] }) | null>(null);
   const [loading, setLoading] = useState(false);
-  const [activeDemo, setActiveDemo] = useState<"human" | "ai" | "custom" | null>(null);
+  const [activeDemo, setActiveDemo] = useState<string | null>(null);
 
-  const analyze = async (input: string, demo?: "human" | "ai" | "custom") => {
+  // Endpoint tester state
+  const [endpointUrl, setEndpointUrl] = useState(`${window.location.origin}/api/ml/detect`);
+  const [endpointBody, setEndpointBody] = useState('{\n  "text": "Your essay text here..."\n}');
+  const [endpointResponse, setEndpointResponse] = useState<string | null>(null);
+  const [endpointLoading, setEndpointLoading] = useState(false);
+  const [endpointStatus, setEndpointStatus] = useState<number | null>(null);
+  const [endpointTime, setEndpointTime] = useState<number | null>(null);
+
+  const analyze = async (input: string, demo?: string) => {
     if (!input.trim() || input.trim().length < 30) return;
     setLoading(true);
     setResult(null);
@@ -907,11 +949,37 @@ function MLPlayground({ onBack }: { onBack: () => void }) {
     setLoading(false);
   };
 
-  const loadDemo = (type: "human" | "ai") => {
-    const t = type === "human" ? DEMO_HUMAN_ESSAY : DEMO_AI_ESSAY;
-    setText(t);
-    setActiveDemo(type);
+  const loadDemo = (type: "human" | "ai", index: number) => {
+    const arr = type === "human" ? DEMO_HUMAN_ESSAYS : DEMO_AI_ESSAYS;
+    setText(arr[index].text);
+    setActiveDemo(`${type}-${index}`);
     setResult(null);
+  };
+
+  const fireEndpoint = async () => {
+    setEndpointLoading(true);
+    setEndpointResponse(null);
+    setEndpointStatus(null);
+    setEndpointTime(null);
+    const start = performance.now();
+    try {
+      const res = await fetch(endpointUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: endpointBody,
+      });
+      const elapsed = Math.round(performance.now() - start);
+      setEndpointTime(elapsed);
+      setEndpointStatus(res.status);
+      const data = await res.json();
+      setEndpointResponse(JSON.stringify(data, null, 2));
+    } catch (err: unknown) {
+      const elapsed = Math.round(performance.now() - start);
+      setEndpointTime(elapsed);
+      setEndpointStatus(0);
+      setEndpointResponse(`Error: ${err instanceof Error ? err.message : "Network error"}`);
+    }
+    setEndpointLoading(false);
   };
 
   return (
@@ -926,20 +994,38 @@ function MLPlayground({ onBack }: { onBack: () => void }) {
       <p className="text-xs text-stone-400 mb-6">Протестируйте InVisionEssayDetector — определите, написан ли текст человеком или AI</p>
 
       <div className="max-w-2xl space-y-5">
-        {/* Demo buttons */}
-        <div className="flex gap-3">
-          <button onClick={() => loadDemo("human")}
-            className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 justify-center ${
-              activeDemo === "human" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
-            }`}>
-            <UserCheck className="w-4 h-4" /> Реальное эссе
-          </button>
-          <button onClick={() => loadDemo("ai")}
-            className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 justify-center ${
-              activeDemo === "ai" ? "border-red-400 bg-red-50 text-red-600" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
-            }`}>
-            <Cpu className="w-4 h-4" /> AI-сгенерированное
-          </button>
+        {/* Demo buttons — Human */}
+        <div>
+          <div className="text-xs font-semibold text-stone-600 mb-2 flex items-center gap-1.5">
+            <UserCheck className="w-3.5 h-3.5 text-emerald-600" /> Реальные эссе людей
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {DEMO_HUMAN_ESSAYS.map((d, i) => (
+              <button key={i} onClick={() => loadDemo("human", i)}
+                className={`px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all text-left ${
+                  activeDemo === `human-${i}` ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+                }`}>
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Demo buttons — AI */}
+        <div>
+          <div className="text-xs font-semibold text-stone-600 mb-2 flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-red-500" /> AI-сгенерированные
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {DEMO_AI_ESSAYS.map((d, i) => (
+              <button key={i} onClick={() => loadDemo("ai", i)}
+                className={`px-3 py-2 rounded-lg border-2 text-xs font-medium transition-all text-left ${
+                  activeDemo === `ai-${i}` ? "border-red-400 bg-red-50 text-red-600" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+                }`}>
+                {d.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Text input */}
@@ -1057,6 +1143,56 @@ function MLPlayground({ onBack }: { onBack: () => void }) {
             )}
           </motion.div>
         )}
+
+        {/* API Endpoint Tester */}
+        <div className="rounded-xl border-2 border-dashed border-stone-300 bg-stone-50 p-5">
+          <h3 className="text-sm font-semibold text-stone-700 mb-3 flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5" /> API Endpoint Tester
+          </h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[10px] font-semibold text-stone-500 mb-1 uppercase tracking-wide">POST Endpoint</label>
+              <input
+                value={endpointUrl}
+                onChange={e => setEndpointUrl(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-stone-300 text-xs font-mono text-stone-800 bg-white focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/20"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-stone-500 mb-1 uppercase tracking-wide">Request Body (JSON)</label>
+              <textarea
+                value={endpointBody}
+                onChange={e => setEndpointBody(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-stone-300 text-xs font-mono text-stone-800 bg-white focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/20 min-h-[100px] resize-y"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={fireEndpoint}
+                disabled={endpointLoading}
+                className="px-4 py-2 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800 disabled:opacity-40 flex items-center gap-2 transition-colors"
+              >
+                {endpointLoading ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3 h-3" />}
+                Отправить запрос
+              </button>
+              {endpointStatus !== null && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={`px-2 py-0.5 rounded font-mono font-bold ${
+                    endpointStatus >= 200 && endpointStatus < 300 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
+                  }`}>
+                    {endpointStatus === 0 ? "ERR" : endpointStatus}
+                  </span>
+                  {endpointTime !== null && <span className="text-stone-400">{endpointTime}ms</span>}
+                </div>
+              )}
+            </div>
+            {endpointResponse && (
+              <pre className="mt-2 p-3 rounded-lg bg-stone-900 text-emerald-400 text-xs font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                {endpointResponse}
+              </pre>
+            )}
+          </div>
+        </div>
 
         {/* How it works */}
         <div className="rounded-lg border border-stone-200 bg-white p-5">
@@ -1847,7 +1983,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
     <div className="min-h-screen bg-stone-50 font-['Plus_Jakarta_Sans',sans-serif]">
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-[220px] shrink-0 bg-stone-900 flex flex-col">
+        <aside className="w-[220px] shrink-0 bg-stone-900 flex flex-col sticky top-0 h-screen overflow-y-auto">
           <div className="flex items-center gap-3 px-5 py-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white"><GraduationCap className="h-4 w-4 text-stone-900" /></div>
             <div>
