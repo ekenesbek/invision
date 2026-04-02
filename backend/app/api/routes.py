@@ -231,12 +231,82 @@ async def get_data_schema():
     }
 
 
+def _generate_explanation(text: str, result: dict) -> list[str]:
+    """Generate human-readable explanation of why the model classified text as human/AI."""
+    signals = []
+    prediction = result["prediction"]
+    confidence = result["confidence"]
+    ai_prob = result["ai_prob"]
+    human_prob = result["human_prob"]
+
+    # Analyze text characteristics
+    sentences = [s.strip() for s in text.replace("!", ".").replace("?", ".").split(".") if s.strip()]
+    words = text.split()
+    avg_sentence_len = sum(len(s.split()) for s in sentences) / max(len(sentences), 1)
+    sentence_lengths = [len(s.split()) for s in sentences]
+    length_variance = (
+        sum((l - avg_sentence_len) ** 2 for l in sentence_lengths) / max(len(sentence_lengths), 1)
+    ) ** 0.5
+
+    # Unique word ratio
+    unique_ratio = len(set(w.lower() for w in words)) / max(len(words), 1)
+
+    # Common AI patterns
+    ai_phrases = [
+        "в заключение", "таким образом", "следует отметить", "необходимо подчеркнуть",
+        "важно отметить", "стоит отметить", "безусловно", "несомненно",
+        "in conclusion", "furthermore", "moreover", "it is important to note",
+        "in summary", "it is worth noting", "significantly", "consequently",
+        "additionally", "nevertheless", "overall", "in today's world",
+    ]
+    found_ai_phrases = [p for p in ai_phrases if p.lower() in text.lower()]
+
+    # Personal markers
+    personal_markers = ["я ", "мне ", "мой ", "моя ", "мои ", "меня ", "i ", "my ", "me "]
+    has_personal = any(m in text.lower() for m in personal_markers)
+
+    if prediction == "ai_generated":
+        if confidence > 0.95:
+            signals.append(f"Модель определила текст как AI-сгенерированный с высокой уверенностью ({confidence*100:.1f}%)")
+        else:
+            signals.append(f"Модель склоняется к AI-генерации (уверенность {confidence*100:.1f}%)")
+
+        if length_variance < 4:
+            signals.append("Однородная длина предложений — типичный признак AI-генерации")
+        if found_ai_phrases:
+            signals.append(f"Обнаружены шаблонные AI-фразы: «{found_ai_phrases[0]}»")
+        if unique_ratio < 0.55:
+            signals.append("Низкое разнообразие лексики — повторяющийся словарный запас")
+        if not has_personal:
+            signals.append("Отсутствие личного опыта и конкретных деталей")
+        if avg_sentence_len > 18:
+            signals.append("Длинные, формально структурированные предложения")
+    else:
+        if confidence > 0.95:
+            signals.append(f"Модель уверена, что текст написан человеком ({confidence*100:.1f}%)")
+        else:
+            signals.append(f"Модель склоняется к авторству человека (уверенность {confidence*100:.1f}%)")
+
+        if has_personal:
+            signals.append("Присутствует личный опыт и субъективная перспектива")
+        if length_variance > 5:
+            signals.append("Вариативная длина предложений — естественный стиль письма")
+        if unique_ratio > 0.6:
+            signals.append("Богатый и разнообразный словарный запас")
+        if not found_ai_phrases:
+            signals.append("Отсутствуют типичные AI-шаблоны и клише")
+        if avg_sentence_len < 15:
+            signals.append("Короткие, живые предложения — характерно для человека")
+
+    return signals
+
+
 @router.post("/ml/detect")
 async def ml_detect_text(payload: dict):
     """Direct ML-based AI text detection on raw text.
 
     Body: {"text": "essay text..."}
-    Returns ML model prediction with per-essay breakdown.
+    Returns ML model prediction with per-essay breakdown + explanation.
     """
     text = payload.get("text", "")
     if not text or len(text.strip()) < 30:
@@ -249,6 +319,8 @@ async def ml_detect_text(payload: dict):
         )
 
     result = ml_detector.predict(text)
+    # Add explanation signals
+    result["explanation"] = _generate_explanation(text, result)
     return result
 
 

@@ -106,3 +106,13 @@ class ScoringResultDB(Base):
     scoring_method: Mapped[str] = mapped_column(String(20))  # "llm" or "heuristic"
     result_data: Mapped[dict] = mapped_column(JSON)  # full ScoringResult as JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AppSettingDB(Base):
+    """Key-value store for persistent app settings (API keys, etc.)."""
+
+    __tablename__ = "app_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

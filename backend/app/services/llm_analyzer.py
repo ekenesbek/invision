@@ -170,7 +170,7 @@ async def llm_score_candidate(candidate: CandidateProfile) -> Optional[dict]:
 
     cfg = get_config()
     api_key = cfg.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
-    model = cfg.get("model", "gpt-4o-mini")
+    model = cfg.get("model", "gpt-5.4-mini")
 
     if not api_key:
         return None

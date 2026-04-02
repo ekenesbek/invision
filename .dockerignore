@@ -4,7 +4,6 @@ ml/outputs
 ml/scripts
 backend/venv
 frontend/node_modules
-frontend/dist
 .git
 .claude
 __pycache__

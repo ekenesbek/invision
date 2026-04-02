@@ -58,8 +58,12 @@ app.include_router(candidates_router)
 app.include_router(talents_router)
 
 
-# Serve frontend static files
-FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+# Serve frontend static files (local dev: frontend/dist, Docker: /app/static)
+_candidates = [
+    Path(__file__).resolve().parent.parent.parent / "frontend" / "dist",
+    Path("/app/static"),
+]
+FRONTEND_DIR = next((p for p in _candidates if p.exists()), _candidates[0])
 
 if FRONTEND_DIR.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="static")

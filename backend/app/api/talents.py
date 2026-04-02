@@ -257,7 +257,7 @@ async def enrich_talent_with_ai(talent_id: int, db: AsyncSession = Depends(get_d
 
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=api_key)
-    model = cfg.get("model", "gpt-4.1")
+    model = cfg.get("model", "gpt-5.4")
 
     achievements_text = "\n".join(
         f"- {a.get('competition', '')}: {a.get('result', '')} (балл: {a.get('score', 'N/A')})"
@@ -332,7 +332,7 @@ async def enrich_all_talents(db: AsyncSession = Depends(get_db)):
 
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=api_key)
-    model = cfg.get("model", "gpt-4.1")
+    model = cfg.get("model", "gpt-5.4")
 
     enriched = 0
     for talent in talents:

@@ -34,7 +34,7 @@ interface ScoringResult {
   ml_detection?: MLDetection | null;
 }
 interface ConfigState { has_api_key: boolean; masked_key: string; model: string; available_models: string[]; llm_active: boolean; }
-type Page = "candidates" | "settings" | "profile" | "report" | "apply" | "talents";
+type Page = "candidates" | "settings" | "profile" | "report" | "apply" | "talents" | "ml-playground";
 interface Talent {
   id: number; source: string; external_id: string; full_name: string;
   country: string; city: string; organization: string;
@@ -690,6 +690,11 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
   const [model, setModel] = useState(config.model);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [mlStatus, setMlStatus] = useState<{ available: boolean; ml_model: string; base_model: string | null; task: string | null } | null>(null);
+
+  useEffect(() => {
+    fetch(`${API}/ml/status`).then(r => r.json()).then(setMlStatus).catch(() => {});
+  }, []);
 
   const save = async () => {
     setSaving(true);
@@ -712,8 +717,9 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
   };
 
   const MODEL_LABELS: Record<string, string> = {
-    "gpt-4.1": "максимум качества",
-    "o4-mini": "быстрый, экономный",
+    "gpt-5.4": "максимум качества",
+    "gpt-5.4-mini": "баланс скорости и качества",
+    "gpt-5.4-nano": "быстрый, экономный",
   };
 
   return (
@@ -779,11 +785,12 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
           </div>
         </div>
 
-        {/* Model */}
+        {/* LLM Model */}
         <div className="rounded-lg border border-stone-200 bg-white p-5">
           <h3 className="text-sm font-semibold text-stone-800 mb-3 flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-stone-700" /> Модель
+            <Sparkles className="w-4 h-4 text-stone-700" /> LLM-модель (оценка кандидата)
           </h3>
+          <p className="text-[11px] text-stone-500 mb-3">Оценивает кандидата по критериям: лидерство, мотивация, рост, вклад и подлинность эссе</p>
           <div className="space-y-2">
             {(config.available_models || []).map(m => (
               <label key={m} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${model === m ? "border-stone-900 bg-stone-50" : "border-stone-200 hover:bg-stone-50"}`}>
@@ -798,10 +805,271 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
           </div>
         </div>
 
+        {/* ML Model */}
+        <div className="rounded-lg border border-stone-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-stone-800 mb-3 flex items-center gap-2">
+            <Brain className="w-4 h-4 text-stone-700" /> ML-модель (AI-детекция эссе)
+          </h3>
+          <p className="text-[11px] text-stone-500 mb-3">Определяет написано ли эссе человеком или сгенерировано AI. Проверяет каждое эссе отдельно и выдаёт процент совпадения.</p>
+          {mlStatus ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${mlStatus.available ? "bg-emerald-500" : "bg-red-400"}`} />
+                <span className="text-sm text-stone-700 font-medium">{mlStatus.ml_model}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${mlStatus.available ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>
+                  {mlStatus.available ? "Active" : "Unavailable"}
+                </span>
+              </div>
+              {mlStatus.available && (
+                <div className="bg-stone-50 rounded-md p-3 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-stone-500">Base model</span>
+                    <span className="text-stone-700 font-mono">{mlStatus.base_model}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-stone-500">Задача</span>
+                    <span className="text-stone-700">Human vs AI detection</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-stone-500">Датасет</span>
+                    <span className="text-stone-700">HC3 (Human ChatGPT Comparison)</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-stone-500">Метод</span>
+                    <span className="text-stone-700">Fine-tuned DistilBERT</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-stone-500">Точность</span>
+                    <span className="text-emerald-600 font-semibold">99.4% (F1: 99.3%)</span>
+                  </div>
+                </div>
+              )}
+              {!mlStatus.available && (
+                <p className="text-[11px] text-stone-500">Модель не загружена. Запустите: <code className="bg-stone-100 px-1 rounded text-[10px]">cd ml && python scripts/train.py</code></p>
+              )}
+              {mlStatus.available && (
+                <button onClick={() => onNavigate("ml-playground" as Page)}
+                  className="w-full mt-3 px-4 py-2.5 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 transition-colors flex items-center justify-center gap-2">
+                  <Zap className="w-3.5 h-3.5" /> Try it now
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-stone-400">Загрузка...</div>
+          )}
+        </div>
+
         <button onClick={save} disabled={saving}
           className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <><Check className="w-4 h-4" /> Сохранено</> : "Сохранить настройки"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ML Playground ───────────────────────────────────────
+
+const DEMO_HUMAN_ESSAY = `Мен Алматыда өскен қарапайым отбасынан шыққанмын. Әкем такси жүргізуші, анам тігінші. Кішкентайымнан бері мен білімге құштар болдым — мектептегі кітапханада сағаттап отыратынмын.
+
+9-сыныпта мен мектебімізде робототехника кружогін аштым. Бастапқыда тек 3 досым қатысты. Бірінші робот жасағанда батарея жарылып, бетіме із қалды. Бірақ мен тоқтаған жоқпын. Жыл соңында кружокта 40 оқушы болды, біз облыстық олимпиадада 2-орын алдық.
+
+Бұл тәжірибе маған нағыз лидерлік — бұл жауаптарды білу емес, бірінші қадам жасау деп үйретті. Ешкім сенбесе де.`;
+
+const DEMO_AI_ESSAY = `In today's rapidly evolving world, leadership plays a crucial role in shaping the trajectory of communities and organizations. It is worth noting that effective leaders must navigate the complexities of modern challenges while maintaining a holistic approach to problem-solving.
+
+Furthermore, the ability to leverage diverse perspectives and foster synergy among team members is paramount in achieving sustainable outcomes. A truly transformative leader understands the importance of creating an inclusive environment that promotes innovation and collaboration.
+
+Moreover, my experience has taught me that leadership is not merely about directing others, but about inspiring a shared vision and empowering individuals to reach their full potential. This multifaceted understanding of leadership serves as a testament to the power of continuous personal growth and development.`;
+
+function MLPlayground({ onBack }: { onBack: () => void }) {
+  const [text, setText] = useState("");
+  const [result, setResult] = useState<(MLEssayPrediction & { explanation?: string[] }) | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [activeDemo, setActiveDemo] = useState<"human" | "ai" | "custom" | null>(null);
+
+  const analyze = async (input: string, demo?: "human" | "ai" | "custom") => {
+    if (!input.trim() || input.trim().length < 30) return;
+    setLoading(true);
+    setResult(null);
+    setActiveDemo(demo || "custom");
+    try {
+      const res = await fetch(`${API}/ml/detect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: input }),
+      });
+      const data = await res.json();
+      setResult(data);
+    } catch {
+      setResult(null);
+    }
+    setLoading(false);
+  };
+
+  const loadDemo = (type: "human" | "ai") => {
+    const t = type === "human" ? DEMO_HUMAN_ESSAY : DEMO_AI_ESSAY;
+    setText(t);
+    setActiveDemo(type);
+    setResult(null);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 py-6">
+      <button onClick={onBack} className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-700 mb-4 transition-colors">
+        <ArrowLeft className="w-3.5 h-3.5" /> Назад к настройкам
+      </button>
+
+      <h2 className="text-lg font-bold text-stone-900 mb-1 flex items-center gap-2">
+        <Brain className="w-5 h-5" /> ML Playground
+      </h2>
+      <p className="text-xs text-stone-400 mb-6">Протестируйте InVisionEssayDetector — определите, написан ли текст человеком или AI</p>
+
+      <div className="max-w-2xl space-y-5">
+        {/* Demo buttons */}
+        <div className="flex gap-3">
+          <button onClick={() => loadDemo("human")}
+            className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 justify-center ${
+              activeDemo === "human" ? "border-emerald-500 bg-emerald-50 text-emerald-700" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+            }`}>
+            <UserCheck className="w-4 h-4" /> Реальное эссе
+          </button>
+          <button onClick={() => loadDemo("ai")}
+            className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex items-center gap-2 justify-center ${
+              activeDemo === "ai" ? "border-red-400 bg-red-50 text-red-600" : "border-stone-200 text-stone-600 hover:bg-stone-50 hover:border-stone-300"
+            }`}>
+            <Cpu className="w-4 h-4" /> AI-сгенерированное
+          </button>
+        </div>
+
+        {/* Text input */}
+        <div>
+          <label className="block text-xs font-semibold text-stone-600 mb-1.5">Текст для анализа</label>
+          <textarea
+            value={text}
+            onChange={e => { setText(e.target.value); setActiveDemo("custom"); setResult(null); }}
+            placeholder="Вставьте текст эссе для проверки (минимум 30 символов)..."
+            className="w-full px-4 py-3 rounded-lg border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/20 bg-white transition-all min-h-[180px] resize-y"
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[10px] text-stone-400">{text.length} символов</span>
+            <button
+              onClick={() => analyze(text, "custom")}
+              disabled={loading || text.trim().length < 30}
+              className="px-4 py-2 bg-stone-900 text-white rounded-lg text-sm font-medium hover:bg-stone-800 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            >
+              {loading ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              Анализировать
+            </button>
+          </div>
+        </div>
+
+        {/* Result */}
+        {loading && (
+          <div className="rounded-xl border border-stone-200 bg-white p-6 flex items-center justify-center gap-3">
+            <div className="w-5 h-5 border-2 border-stone-300 border-t-stone-900 rounded-full animate-spin" />
+            <span className="text-sm text-stone-500">Анализируем текст...</span>
+          </div>
+        )}
+
+        {result && !loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-xl border-2 p-6 ${
+              result.prediction === "human"
+                ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white"
+                : "border-red-200 bg-gradient-to-br from-red-50 to-white"
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                result.prediction === "human" ? "bg-emerald-100" : "bg-red-100"
+              }`}>
+                {result.prediction === "human"
+                  ? <UserCheck className="w-6 h-6 text-emerald-600" />
+                  : <Cpu className="w-6 h-6 text-red-500" />}
+              </div>
+              <div>
+                <div className={`text-lg font-bold ${result.prediction === "human" ? "text-emerald-700" : "text-red-600"}`}>
+                  {result.prediction === "human" ? "Написано человеком" : "AI-сгенерировано"}
+                </div>
+                <div className="text-xs text-stone-500">
+                  Уверенность модели: {Math.round(result.confidence * 100)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Score bar */}
+            <div className="mb-4">
+              <div className="flex justify-between text-[10px] text-stone-500 mb-1">
+                <span>AI-generated</span>
+                <span>Human-written</span>
+              </div>
+              <div className="h-3 bg-stone-200 rounded-full overflow-hidden relative">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${
+                    result.prediction === "human" ? "bg-emerald-500" : "bg-red-400"
+                  }`}
+                  style={{ width: `${result.human_prob * 100}%`, marginLeft: result.prediction !== "human" ? "0" : "auto" }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-stone-700/80">
+                    {Math.round(result.authenticity_score)}/100
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Probabilities */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className={`p-3 rounded-lg text-center ${result.prediction === "human" ? "bg-emerald-100/60" : "bg-stone-100"}`}>
+                <div className="text-[10px] text-stone-500 mb-0.5">Human</div>
+                <div className={`text-xl font-bold ${result.prediction === "human" ? "text-emerald-600" : "text-stone-400"}`}>
+                  {(result.human_prob * 100).toFixed(1)}%
+                </div>
+              </div>
+              <div className={`p-3 rounded-lg text-center ${result.prediction === "ai_generated" ? "bg-red-100/60" : "bg-stone-100"}`}>
+                <div className="text-[10px] text-stone-500 mb-0.5">AI-generated</div>
+                <div className={`text-xl font-bold ${result.prediction === "ai_generated" ? "text-red-500" : "text-stone-400"}`}>
+                  {(result.ai_prob * 100).toFixed(1)}%
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            {result.explanation && result.explanation.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-stone-200/60">
+                <h4 className="text-xs font-semibold text-stone-600 mb-2 flex items-center gap-1.5">
+                  <Lightbulb className="w-3.5 h-3.5" /> Почему модель так решила
+                </h4>
+                <ul className="space-y-1.5">
+                  {result.explanation.map((signal, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-stone-600">
+                      <span className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                        result.prediction === "human" ? "bg-emerald-400" : "bg-red-400"
+                      }`} />
+                      {signal}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* How it works */}
+        <div className="rounded-lg border border-stone-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-stone-700 mb-2 flex items-center gap-1.5">
+            <HelpCircle className="w-3.5 h-3.5" /> Как это работает
+          </h3>
+          <div className="space-y-2 text-xs text-stone-500">
+            <p><strong className="text-stone-600">Модель:</strong> InVisionEssayDetector — fine-tuned DistilBERT на датасете HC3 (Human vs ChatGPT).</p>
+            <p><strong className="text-stone-600">Вход:</strong> текст эссе (любой язык, минимум 30 символов).</p>
+            <p><strong className="text-stone-600">Выход:</strong> вероятность что текст написан человеком (0-100%) или сгенерирован AI.</p>
+            <p><strong className="text-stone-600">Точность:</strong> 99.4% на валидационной выборке (F1: 99.3%).</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1399,7 +1667,7 @@ export default function App() {
 function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; onLogout: () => void }) {
   const [page, setPage] = useState<Page>(() => window.location.hash === "#apply" ? "apply" : "candidates");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, masked_key: "", model: "gpt-4.1", available_models: [], llm_active: false });
+  const [config, setConfig] = useState<ConfigState>({ has_api_key: false, masked_key: "", model: "gpt-5.4-mini", available_models: [], llm_active: false });
   const [loading, setLoading] = useState(true);
   const [scoring, setScoring] = useState(false);
   const [scoringId, setScoringId] = useState<string | null>(null);
@@ -1422,7 +1690,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
   const loadData = async () => {
     try {
       const [cfg, data] = await Promise.all([
-        fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, masked_key: "", model: "gpt-4.1", available_models: [] })),
+        fetch(`${API}/config`).then(r => r.json()).catch(() => ({ has_api_key: false, masked_key: "", model: "gpt-5.4-mini", available_models: [] })),
         fetch(`${API}/candidates`).then(r => r.json()).catch(() => null),
       ]);
       setConfig({ ...cfg, llm_active: cfg.has_api_key });
@@ -1607,12 +1875,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
               {settingsItem.icon}{settingsItem.label}
             </button>
           </div>
-          <div className="px-4 py-4 border-t border-stone-800 space-y-3">
-            <div className={`text-[10px] px-2.5 py-1.5 rounded-md flex items-center gap-1.5 font-medium ${
-              config.llm_active ? "bg-white/10 text-stone-300 border border-white/10" : "bg-stone-800 text-stone-500 border border-stone-700"
-            }`}>
-              {config.llm_active ? <><Sparkles className="w-3 h-3" /> AI: {config.model}</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
-            </div>
+          <div className="px-4 py-4 border-t border-stone-800">
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-stone-400 truncate">{authEmail}</span>
               <button onClick={onLogout} title="Выйти" className="p-1 rounded text-stone-500 hover:text-white hover:bg-white/10 transition-colors">
@@ -1650,6 +1913,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
 
           {/* Settings */}
           {page === "settings" && <SettingsPage config={config} onUpdate={setConfig} onNavigate={setPage} />}
+          {page === "ml-playground" && <MLPlayground onBack={() => setPage("settings")} />}
 
           {/* Talents */}
           {page === "talents" && <TalentsPage />}

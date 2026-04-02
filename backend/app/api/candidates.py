@@ -249,7 +249,7 @@ async def score_all_candidates(
         if api_key:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(api_key=api_key)
-            model = cfg.get("model", "gpt-4o-mini")
+            model = cfg.get("model", "gpt-5.4-mini")
 
             row_map = {r.id: r for r in rows}
 
@@ -339,7 +339,7 @@ async def ask_ai_about_candidate(candidate_id: str, req: AskAIRequest, db: Async
 
     from openai import AsyncOpenAI
     client = AsyncOpenAI(api_key=api_key)
-    model = cfg.get("model", "gpt-4o-mini")
+    model = cfg.get("model", "gpt-5.4-mini")
 
     system_prompt = f"""Ты — AI-ассистент приёмной комиссии inVision U. Тебе предоставлены данные кандидата.
 Отвечай на вопросы сотрудника комиссии о кандидате. Будь конкретным, опирайся на данные.
