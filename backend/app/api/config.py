@@ -73,6 +73,11 @@ async def _save_setting(key: str, value: str):
         pass  # Non-critical — still works from memory
 
 
+async def ensure_loaded():
+    """Ensure config is loaded from DB. Call from any async endpoint."""
+    await _load_from_db()
+
+
 def get_config() -> dict:
     """Get current config. Falls back to env var for API key."""
     key = _config.get("openai_api_key") or os.getenv("OPENAI_API_KEY", "")

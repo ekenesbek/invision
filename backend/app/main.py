@@ -26,6 +26,9 @@ async def lifespan(app: FastAPI):
     await init_db()
     async with async_session() as db:
         await seed_user(db)
+    # Load config from DB (API keys, model selection)
+    from .api.config import ensure_loaded
+    await ensure_loaded()
     # Pre-load ML model (non-blocking, lazy init on first call if fails)
     from .services import ml_detector
     if ml_detector.is_available():
