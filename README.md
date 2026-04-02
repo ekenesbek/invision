@@ -46,7 +46,7 @@
 │  ┌───────────────┐  ┌───────────────────────────────┐    │
 │  │ ML Detector   │  │ Text Analyzer                  │    │
 │  │ DistilBERT    │  │ 50+ RU/EN markers              │    │
-│  │ fine-tuned    │  │ AI-фразы, вариативность        │    │
+│  │ (volume)      │  │ AI-фразы, вариативность        │    │
 │  └───────────────┘  └───────────────────────────────┘    │
 │                                                           │
 │  ┌───────────────┐  ┌───────────────────────────────┐    │
@@ -66,6 +66,30 @@
 │  └──────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────┘
 ```
+
+## Сборка: App vs ML Model
+
+Сборка проекта **разделена** на два независимых компонента:
+
+| Компонент | Что содержит | Размер | Как обновлять |
+|-----------|-------------|--------|---------------|
+| **App Image** | Backend (FastAPI) + Frontend (React) + зависимости | ~1.5 GB | `docker compose up --build` |
+| **ML Model** | Fine-tuned DistilBERT (InVisionEssayDetector) | ~268 MB | Обновить файлы в `ml/model/`, перезапустить backend |
+
+ML-модель **не запекается** в Docker-образ, а монтируется как volume:
+
+```yaml
+# docker-compose.yml
+backend:
+  volumes:
+    - ./ml/model:/app/ml/model:ro  # ML model mounted read-only
+```
+
+**Преимущества:**
+- Пересборка приложения не требует перекачки 268MB модели
+- Модель можно обновить без пересборки образа (просто перезапуск)
+- Зависимости (torch, transformers) отделены в `requirements-ml.txt`
+- Если модель недоступна — система работает на эвристиках
 
 ## Scoring: LLM-first с Heuristic Fallback
 
@@ -136,6 +160,23 @@ docker compose up --build
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000
 - Swagger: http://localhost:8000/docs
+
+### Production (сервер)
+
+```bash
+# Используйте prod-конфигурацию с кастомными портами
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+- Frontend: http://158.160.193.93:3002
+- Backend API: http://158.160.193.93:8090
+- Swagger: http://158.160.193.93:8090/docs
+
+### Деплой
+
+```bash
+./deploy.sh  # Push → Pull → Rebuild → Health check
+```
 
 ### Локально
 
@@ -209,7 +250,7 @@ docker compose up --build
 | LLM | OpenAI gpt-5.4-mini (опционально) |
 | ML | Fine-tuned DistilBERT (InVisionEssayDetector) |
 | NLP | Custom heuristic analyzer (RU/EN, 50+ markers) |
-| Deploy | Docker Compose (PostgreSQL + Backend + Frontend) |
+| Deploy | Docker Compose (PostgreSQL + Backend + Frontend), ML model as volume |
 
 ## Структура проекта
 
@@ -240,7 +281,8 @@ invision/
 │   │   │   └── scrapers/          # IMO, IOI, IPhO, IChO, IZhO, Codeforces
 │   │   └── data/
 │   │       └── sample_candidates.py  # 20 демо-кандидатов
-│   ├── requirements.txt
+│   ├── requirements.txt           # Base зависимости (FastAPI, SQLAlchemy, etc.)
+│   ├── requirements-ml.txt        # ML зависимости (torch, transformers)
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
@@ -253,12 +295,14 @@ invision/
 │   ├── Dockerfile
 │   └── nginx.conf
 ├── ml/
-│   ├── model/InVisionEssayDetector/  # Fine-tuned DistilBERT
+│   ├── model/InVisionEssayDetector/  # Fine-tuned DistilBERT (volume, не в образе)
 │   ├── scripts/                      # train, infer, prepare_data
 │   ├── requirements.txt
 │   ├── README.md
 │   └── DOCS.md                       # Полная ML документация
-├── docker-compose.yml             # PostgreSQL + Backend + Frontend
+├── docker-compose.yml             # Dev: PostgreSQL + Backend + Frontend
+├── docker-compose.prod.yml        # Prod: кастомные порты + ML volume
+├── deploy.sh                      # Деплой на сервер (push → pull → rebuild)
 ├── Dockerfile                     # All-in-one образ
 ├── QUICKSTART.md
 ├── ARCHITECTURE.md

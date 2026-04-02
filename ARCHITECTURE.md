@@ -10,7 +10,7 @@
 | LLM | OpenAI API (gpt-5.4 / gpt-5.4-mini / gpt-5.4-nano) |
 | ML | Fine-tuned DistilBERT (InVisionEssayDetector) |
 | NLP | Кастомный эвристический анализатор (50+ маркеров RU/EN) |
-| Deploy | Docker Compose (3 сервиса) |
+| Deploy | Docker Compose (3 сервиса) + ML model as volume |
 
 ## Схема
 
@@ -25,7 +25,7 @@
                      │  └──────────────┘ └────────────────┘  │
                      │  ┌──────────────┐ ┌────────────────┐  │
                      │  │ ML Detector  │ │ Text Analyzer  │  │
-                     │  │ DistilBERT   │ │ 50+ markers    │  │
+                     │  │ (volume)     │ │ 50+ markers    │  │
                      │  └──────────────┘ └────────────────┘  │
                      │  ┌──────────────┐ ┌────────────────┐  │
                      │  │ Fairness     │ │ Baseline       │  │
@@ -36,6 +36,45 @@
                      │  │ IMO, IOI, IPhO, IChO, IZhO, CF  │  │
                      │  └──────────────────────────────────┘  │
                      └────────────────────────────────────────┘
+                              ▲
+                              │ volume mount (read-only)
+                     ┌────────┴────────┐
+                     │  ML Model       │
+                     │  DistilBERT     │
+                     │  (~268 MB)      │
+                     │  ml/model/      │
+                     └─────────────────┘
+```
+
+## Сборка: App vs ML Model
+
+Сборка проекта разделена на два независимых компонента:
+
+```
+┌─────────────────────────────┐     ┌─────────────────────────────┐
+│  App Image (Docker)         │     │  ML Model (Volume)          │
+│                             │     │                             │
+│  backend/                   │     │  ml/model/                  │
+│    requirements.txt (base)  │     │    InVisionEssayDetector/   │
+│    requirements-ml.txt      │     │      model.safetensors      │
+│    app/ (FastAPI code)      │     │      tokenizer.json         │
+│                             │     │      config.json            │
+│  frontend/dist/ (static)    │     │      vocab.txt              │
+│                             │     │                             │
+│  Обновление: rebuild image  │     │  Обновление: заменить файлы │
+│  ~2-5 мин                   │     │  + перезапуск backend       │
+└─────────────────────────────┘     └─────────────────────────────┘
+```
+
+**Зависимости разделены:**
+- `requirements.txt` — базовые (FastAPI, SQLAlchemy, OpenAI, etc.)
+- `requirements-ml.txt` — ML (torch, transformers)
+
+**Монтирование модели:**
+```yaml
+backend:
+  volumes:
+    - ./ml/model:/app/ml/model:ro  # read-only, не в образе
 ```
 
 ## Скоринг: 6 критериев
@@ -208,13 +247,22 @@ app_settings             -- Настройки приложения (API клю�
 ## Docker
 
 ```yaml
+# docker-compose.yml (dev)
 services:
-  postgres:   # PostgreSQL 16 + healthcheck
-  backend:    # FastAPI + ML model (context: root)
-  frontend:   # React build → Nginx (proxy /api → backend)
+  postgres:   # PostgreSQL 16 + healthcheck (:5432)
+  backend:    # FastAPI + ML deps (:8000), ML model mounted as volume
+  frontend:   # React build → Nginx (:3000), proxy /api → backend
+
+# docker-compose.prod.yml (production)
+services:
+  postgres:   # :5434
+  backend:    # :8090, ML model volume
+  frontend:   # :3002
 ```
 
-Запуск: `docker compose up --build`
+Запуск (dev): `docker compose up --build`
+Запуск (prod): `docker compose -f docker-compose.prod.yml up --build -d`
+Деплой: `./deploy.sh`
 
 ## Структура проекта
 
@@ -237,7 +285,7 @@ backend/app/
 │   ├── scoring_engine.py  # Оркестрация скоринга (LLM + heuristic)
 │   ├── llm_analyzer.py    # OpenAI интеграция + системный промпт
 │   ├── text_analyzer.py   # Эвристический NLP (50+ маркеров)
-│   ├── ml_detector.py     # DistilBERT AI-детекция
+│   ├── ml_detector.py     # DistilBERT AI-детекция (модель из volume)
 │   ├── baseline_scorer.py # Наивный baseline
 │   ├── fairness.py        # Аудит справедливости
 │   └── scrapers/          # IMO, IOI, IPhO, IChO, IZhO, Codeforces
@@ -252,7 +300,7 @@ frontend/src/
 └── index.css             # Tailwind + стили
 
 ml/
-├── model/InVisionEssayDetector/  # Fine-tuned DistilBERT
+├── model/InVisionEssayDetector/  # Fine-tuned DistilBERT (volume mount)
 ├── scripts/                      # prepare_data, train, infer
 ├── requirements.txt
 ├── README.md

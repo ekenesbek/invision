@@ -12,7 +12,7 @@ cd invision
 # (опционально) указать OpenAI ключ для LLM-режима
 export OPENAI_API_KEY=sk-your-key-here
 
-# Запустить всё
+# Запустить всё (ML-модель монтируется как volume, не запекается в образ)
 docker compose up --build
 ```
 
@@ -20,6 +20,22 @@ docker compose up --build
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:8000
 - **Swagger docs:** http://localhost:8000/docs
+
+### Production (сервер)
+
+```bash
+# Prod-конфигурация с кастомными портами
+docker compose -f docker-compose.prod.yml up --build -d
+```
+
+- **Frontend:** http://158.160.193.93:3002
+- **Backend API:** http://158.160.193.93:8090
+
+### Деплой на сервер
+
+```bash
+./deploy.sh  # Push → Pull → Rebuild → Health check
+```
 
 ---
 
@@ -57,8 +73,11 @@ cd backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# Установить зависимости
+# Установить базовые зависимости
 pip install -r requirements.txt
+
+# Установить ML зависимости (torch + transformers, опционально)
+pip install -r requirements-ml.txt
 
 # Настроить переменные окружения
 cp .env.example .env
@@ -110,6 +129,26 @@ bash scripts/run_pipeline.sh
 
 Обученная модель сохраняется в `ml/model/InVisionEssayDetector/`.
 Backend подхватит её при следующем запуске.
+
+---
+
+## Разделение сборки
+
+Сборка проекта разделена на **App** и **ML Model**:
+
+| Компонент | Файлы | Обновление |
+|-----------|-------|------------|
+| App (Docker image) | `backend/` + `frontend/` | `docker compose up --build` |
+| ML Model (Volume) | `ml/model/InVisionEssayDetector/` | Заменить файлы → перезапустить backend |
+| Base deps | `backend/requirements.txt` | FastAPI, SQLAlchemy, OpenAI |
+| ML deps | `backend/requirements-ml.txt` | torch, transformers |
+
+ML-модель **не запекается** в Docker-образ, а монтируется как read-only volume:
+```yaml
+backend:
+  volumes:
+    - ./ml/model:/app/ml/model:ro
+```
 
 ---
 

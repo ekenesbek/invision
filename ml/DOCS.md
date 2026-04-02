@@ -325,7 +325,7 @@ print(result)
 ```python
 # ml_detector.py — lazy-загрузка, ищет модель в двух местах:
 # 1. ml/model/InVisionEssayDetector/  (локальная разработка)
-# 2. /app/ml/model/InVisionEssayDetector/  (Docker)
+# 2. /app/ml/model/InVisionEssayDetector/  (Docker — volume mount)
 
 from backend.app.services.ml_detector import predict, predict_essays, is_available
 
@@ -342,10 +342,29 @@ result = predict_essays(
 # {"overall": {...}, "per_essay": {"motivation": {...}, ...}, "ml_authenticity_score": 94.0}
 ```
 
+### Разделение сборки
+
+ML-модель **не запекается** в Docker-образ backend'а. Вместо этого она монтируется как volume:
+
+```yaml
+# docker-compose.yml
+backend:
+  volumes:
+    - ./ml/model:/app/ml/model:ro
+```
+
+Это позволяет:
+- Обновлять модель без пересборки Docker-образа
+- Пересобирать приложение без перекачки ~268MB модели
+- Тренировать новую модель → заменить файлы → перезапустить backend
+
+Зависимости разделены:
+- `backend/requirements.txt` — базовые (FastAPI, etc.)
+- `backend/requirements-ml.txt` — ML (torch, transformers)
+
 Результат используется в `scoring_engine.py` для трёхслойной AI-детекции:
 - ML (40%) + LLM (40%) + Heuristic (20%) = blended confidence
 - Consensus bonus +20% если ML и LLM согласны
-```
 
 ---
 
