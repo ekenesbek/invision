@@ -1811,7 +1811,18 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
   const [activeTab, setActiveTab] = useState<Tab>("pending");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [batchResults, setBatchResults] = useState<ScoringResult[] | null>(null);
+  const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("viewedCandidates") || "[]")); } catch { return new Set(); }
+  });
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const markViewed = (id: string) => {
+    setViewedIds(prev => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem("viewedCandidates", JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   const parseCandidate = (c: any): Candidate => ({
     id: c.id || nextId(), full_name: c.full_name || "", age: c.age || 17, city: c.city || "",
@@ -2043,7 +2054,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
             <BatchResultsView results={batchResults} onBack={() => { setBatchResults(null); setPage("candidates"); }}
               onViewCandidate={(r) => {
                 const c = candidates.find(cc => cc.id === r.candidate_id);
-                if (c) { setSelectedCandidate(c); setBatchResults(null); setPage("profile"); }
+                if (c) { setSelectedCandidate(c); markViewed(c.id); setBatchResults(null); setPage("profile"); }
               }} />
           )}
 
@@ -2132,11 +2143,17 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
                     {filteredCandidates.map((c, i) => {
                       const r = results.get(c.id);
                       const isScoring = scoringId === c.id;
+                      const viewed = viewedIds.has(c.id);
                       return (
-                        <tr key={c.id} onClick={() => { setSelectedCandidate(c); setPage("profile"); }}
-                          className="border-b border-stone-100 transition-colors hover:bg-stone-50/50 cursor-pointer">
+                        <tr key={c.id} onClick={() => { setSelectedCandidate(c); markViewed(c.id); setPage("profile"); }}
+                          className={`border-b border-stone-100 transition-colors hover:bg-stone-50/50 cursor-pointer ${viewed ? "opacity-50" : ""}`}>
                           <td className="px-4 py-3 align-middle text-stone-400 text-xs tabular-nums">{i + 1}</td>
-                          <td className="px-4 py-3 align-middle font-medium text-stone-800">{c.full_name}</td>
+                          <td className="px-4 py-3 align-middle font-medium text-stone-800">
+                            <span className="flex items-center gap-2">
+                              {c.full_name}
+                              {viewed && <Eye className="w-3 h-3 text-stone-300 shrink-0" />}
+                            </span>
+                          </td>
                           <td className="px-4 py-3 align-middle text-stone-600 tabular-nums">{c.age}</td>
                           <td className="px-4 py-3 align-middle text-stone-600 truncate max-w-[120px]">{c.city || "—"}</td>
                           <td className="px-4 py-3 align-middle text-stone-500 truncate max-w-[150px] text-xs">{c.school_name || "—"}</td>
@@ -2155,7 +2172,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
                           </td>
                           <td className="px-4 py-3 align-middle">
                             <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                              <button onClick={() => { setSelectedCandidate(c); setPage("profile"); }} title="Просмотр"
+                              <button onClick={() => { setSelectedCandidate(c); markViewed(c.id); setPage("profile"); }} title="Просмотр"
                                 className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-50"><Eye className="w-3.5 h-3.5" /></button>
                               {activeTab === "pending" && (
                                 <>
