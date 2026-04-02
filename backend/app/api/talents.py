@@ -148,10 +148,15 @@ async def talent_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+def _default_min_year() -> int:
+    from datetime import datetime
+    return datetime.now().year - 1  # last 2 years (current + previous)
+
+
 class ScrapeRequest(BaseModel):
     sources: list[str] = ALL_SOURCES
     min_rating: int = 1200  # codeforces only
-    min_year: int = 2025  # last 2 years (2025-2026)
+    min_year: int | None = None  # auto: current_year - 1
     max_results: int = 100  # codeforces only
     filter_under18: bool = True  # exclude university students
 
@@ -159,6 +164,7 @@ class ScrapeRequest(BaseModel):
 @talents_router.post("/scrape")
 async def scrape_talents(req: ScrapeRequest, db: AsyncSession = Depends(get_db)):
     """Run scrapers and save results to DB."""
+    min_year = req.min_year if req.min_year is not None else _default_min_year()
     results = {}
 
     async def run_scraper(name: str):
@@ -168,7 +174,7 @@ async def scrape_talents(req: ScrapeRequest, db: AsyncSession = Depends(get_db))
         try:
             talents = await scraper.scrape(
                 min_rating=req.min_rating,
-                min_year=req.min_year,
+                min_year=min_year,
                 max_results=req.max_results,
             )
             return name, talents

@@ -18,6 +18,7 @@ from ..models.candidate import (
 )
 from ..services.baseline_scorer import baseline_score_candidate
 from ..services.fairness import compute_fairness_report
+from ..services import ml_detector
 from ..services.scoring_engine import (
     score_batch,
     score_batch_with_llm,
@@ -230,12 +231,47 @@ async def get_data_schema():
     }
 
 
+@router.post("/ml/detect")
+async def ml_detect_text(payload: dict):
+    """Direct ML-based AI text detection on raw text.
+
+    Body: {"text": "essay text..."}
+    Returns ML model prediction with per-essay breakdown.
+    """
+    text = payload.get("text", "")
+    if not text or len(text.strip()) < 30:
+        raise HTTPException(status_code=400, detail="Text must be at least 30 characters")
+
+    if not ml_detector.is_available():
+        raise HTTPException(
+            status_code=503,
+            detail="ML model not available. Train it first: cd ml && python scripts/train.py"
+        )
+
+    result = ml_detector.predict(text)
+    return result
+
+
+@router.get("/ml/status")
+async def ml_model_status():
+    """Check ML model availability and info."""
+    available = ml_detector.is_available()
+    return {
+        "ml_model": "InVisionEssayDetector",
+        "available": available,
+        "base_model": "distilbert-base-uncased" if available else None,
+        "task": "AI-generated text detection (binary classification)" if available else None,
+    }
+
+
 @router.get("/health")
 async def health_check():
     has_llm = bool(os.getenv("OPENAI_API_KEY"))
+    has_ml = ml_detector.is_available()
     return {
         "status": "ok",
         "service": "inVision U AI Screening",
         "scoring_method": "llm" if has_llm else "heuristic",
         "llm_available": has_llm,
+        "ml_model_available": has_ml,
     }

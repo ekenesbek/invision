@@ -10,6 +10,27 @@ from sqlalchemy.orm import Mapped, mapped_column
 from ..database import Base
 
 
+class UserDB(Base):
+    """Admin user for authentication."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(200), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class SessionDB(Base):
+    """User session tokens."""
+
+    __tablename__ = "sessions"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class CandidateDB(Base):
     """Persistent candidate record."""
 

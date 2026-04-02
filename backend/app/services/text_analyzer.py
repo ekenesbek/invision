@@ -153,18 +153,11 @@ def compute_text_depth(text: str) -> float:
     return score
 
 
-def detect_ai_generated(text: str) -> tuple[bool, float, list[str]]:
-    """Heuristic AI-generated text detection.
-
-    Returns (is_likely_ai, confidence, indicators).
-    """
-    if not text or len(text) < 50:
-        return False, 0.0, []
-
+def _heuristic_ai_detection(text: str) -> tuple[bool, float, list[str]]:
+    """Heuristic-only AI detection (keyword/statistical)."""
     indicators = []
     score = 0.0
 
-    # Check for known AI phrases
     text_lower = text.lower()
     ai_phrase_count = 0
     for phrase in AI_INDICATORS_PHRASES:
@@ -185,25 +178,21 @@ def detect_ai_generated(text: str) -> tuple[bool, float, list[str]]:
     elif ai_phrase_count >= 1:
         score += 0.15
 
-    # Low sentence length variance
     sent_variety = analyze_sentence_variety(text)
     if sent_variety < 0.25:
         score += 0.2
         indicators.append("Низкая вариативность длины предложений (типично для AI)")
 
-    # Vocabulary too uniform / too rich for age group
     vocab_richness = analyze_vocabulary_richness(text)
     if vocab_richness > 0.85:
         score += 0.15
         indicators.append("Необычно высокое лексическое разнообразие")
 
-    # Lack of specific personal details
     depth = compute_text_depth(text)
     if depth < 0.2:
         score += 0.15
         indicators.append("Мало конкретных личных деталей и примеров")
 
-    # Too long and too well-structured for a student essay
     words = text.split()
     if len(words) > 500:
         paragraphs = text.count("\n\n") + text.count("\n")
@@ -218,6 +207,51 @@ def detect_ai_generated(text: str) -> tuple[bool, float, list[str]]:
         indicators.append("Признаков AI-генерации не обнаружено")
 
     return is_likely, confidence, indicators
+
+
+def detect_ai_generated(text: str) -> tuple[bool, float, list[str]]:
+    """AI-generated text detection: ML model (primary) + heuristic (fallback/blend).
+
+    Returns (is_likely_ai, confidence, indicators).
+    """
+    if not text or len(text) < 50:
+        return False, 0.0, []
+
+    # Try ML model first
+    from . import ml_detector
+
+    ml_result = ml_detector.predict(text)
+
+    # Heuristic always runs (provides explainable indicators)
+    heur_likely, heur_conf, heur_indicators = _heuristic_ai_detection(text)
+
+    if ml_result is not None:
+        ml_conf = ml_result["ai_prob"]
+        ml_likely = ml_result["prediction"] == "ai_generated"
+
+        # Blend: 70% ML + 30% heuristic
+        blended_conf = ml_conf * 0.7 + heur_conf * 0.3
+        is_likely = blended_conf >= 0.4
+
+        indicators = []
+        if ml_likely:
+            indicators.append(
+                f"🤖 ML-модель InVisionEssayDetector: AI-generated "
+                f"(уверенность {ml_conf:.0%})"
+            )
+        else:
+            indicators.append(
+                f"✅ ML-модель InVisionEssayDetector: human "
+                f"(уверенность {ml_result['confidence']:.0%})"
+            )
+
+        # Add heuristic indicators for explainability
+        indicators.extend(heur_indicators)
+
+        return is_likely, round(blended_conf, 2), indicators
+
+    # ML not available — pure heuristic
+    return heur_likely, heur_conf, heur_indicators
 
 
 class TextAnalysisResult:

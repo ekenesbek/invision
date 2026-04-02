@@ -12,17 +12,26 @@ from fastapi.responses import FileResponse
 
 load_dotenv()
 
+from .api.auth import auth_router, seed_user
 from .api.candidates import candidates_router
 from .api.config import config_router
 from .api.demo import demo_router
 from .api.routes import router
 from .api.talents import talents_router
-from .database import init_db
+from .database import init_db, async_session
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    async with async_session() as db:
+        await seed_user(db)
+    # Pre-load ML model (non-blocking, lazy init on first call if fails)
+    from .services import ml_detector
+    if ml_detector.is_available():
+        print("✅ InVisionEssayDetector ML model loaded")
+    else:
+        print("⚠️  ML model not available, using heuristic AI detection only")
     yield
 
 
@@ -41,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(router)
 app.include_router(demo_router)
 app.include_router(config_router)

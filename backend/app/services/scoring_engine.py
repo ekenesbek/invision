@@ -18,6 +18,7 @@ from ..models.candidate import (
 )
 from .baseline_scorer import baseline_score_candidate
 from .text_analyzer import analyze_essays, detect_ai_generated
+from . import ml_detector
 
 
 # Scoring weights — aligned with inVision U values
@@ -161,13 +162,20 @@ def score_candidate(candidate: CandidateProfile) -> ScoringResult:
         community_contribution=candidate.community_contribution,
     )
 
-    # 2. AI detection
+    # 2. AI detection (ML + heuristic blend)
     all_essays = " ".join([
         candidate.essay_motivation,
         candidate.essay_leadership,
         candidate.essay_challenge,
     ])
     ai_detected, ai_confidence, ai_indicators = detect_ai_generated(all_essays)
+
+    # 2b. ML per-essay breakdown (for detailed report)
+    ml_essay_result = ml_detector.predict_essays(
+        essay_motivation=candidate.essay_motivation,
+        essay_leadership=candidate.essay_leadership,
+        essay_challenge=candidate.essay_challenge,
+    )
 
     # 3. Score activities
     activity_score, activity_signals = _score_activities(candidate)
@@ -276,6 +284,7 @@ def score_candidate(candidate: CandidateProfile) -> ScoringResult:
         areas_for_review=areas_for_review,
         scoring_method="heuristic",
         baseline_score=b_score,
+        ml_detection=ml_essay_result,
     )
 
 
@@ -374,11 +383,34 @@ async def score_candidate_with_llm(candidate: CandidateProfile) -> ScoringResult
     # Recommendation
     recommendation, recommendation_label = _determine_recommendation(total_score)
 
-    # AI detection from LLM
+    # AI detection from LLM + ML model
     llm_ai = llm_result.get("ai_detection", {})
     ai_indicators = llm_ai.get("indicators", [])
     ai_detected = llm_ai.get("is_likely_ai", False)
     ai_confidence = llm_ai.get("confidence", 0.0)
+
+    # ML per-essay breakdown
+    ml_essay_result = ml_detector.predict_essays(
+        essay_motivation=candidate.essay_motivation,
+        essay_leadership=candidate.essay_leadership,
+        essay_challenge=candidate.essay_challenge,
+    )
+
+    # Blend ML detection with LLM detection if ML is available
+    if ml_essay_result is not None:
+        ml_ai_prob = ml_essay_result["overall"]["ai_prob"]
+        # Blend: 40% ML + 40% LLM + 20% for consensus
+        blended_conf = ml_ai_prob * 0.4 + ai_confidence * 0.4
+        if (ml_ai_prob > 0.5) == (ai_confidence > 0.4):
+            blended_conf += 0.2  # consensus bonus
+        ai_confidence = min(blended_conf, 1.0)
+        ai_detected = ai_confidence >= 0.4
+
+        ml_label = ml_essay_result["overall"]["prediction"]
+        ai_indicators.insert(0,
+            f"🤖 ML-модель InVisionEssayDetector: {ml_label} "
+            f"(уверенность {ml_essay_result['overall']['confidence']:.0%})"
+        )
 
     # Strengths and areas for review
     sorted_dims = sorted(dimensions, key=lambda d: d.score, reverse=True)
@@ -428,6 +460,7 @@ async def score_candidate_with_llm(candidate: CandidateProfile) -> ScoringResult
         scoring_method="llm",
         llm_analysis=llm_analysis,
         baseline_score=b_score,
+        ml_detection=ml_essay_result,
     )
 
 

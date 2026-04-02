@@ -5,7 +5,7 @@ import {
   Settings, Eye, Zap, ChevronDown, Check, ArrowLeft,
   Upload, Table, CheckCircle, XCircle, Clock, FileText,
   ChevronRight, UserCheck, UserX, MessageCircle, Send,
-  HelpCircle, Lightbulb, Target, RotateCcw, ClipboardList, Search, Globe, ExternalLink, Star, RefreshCw
+  HelpCircle, Lightbulb, Target, RotateCcw, Search, Globe, ExternalLink, Star, LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -56,16 +56,16 @@ function exportCSV(results: ScoringResult[]) {
 
 function ScoreCircle({ score, size = 90 }: { score: number; size?: number }) {
   const r = (size - 14) / 2, c = 2 * Math.PI * r, o = c - (score / 100) * c;
-  const color = score >= 70 ? "#22c55e" : score >= 45 ? "#f59e0b" : "#ef4444";
+  const color = score >= 70 ? "#22c55e" : score >= 45 ? "#eab308" : "#ef4444";
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth="6" />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e7e5e4" strokeWidth="6" />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="6" strokeDasharray={c} strokeDashoffset={o} strokeLinecap="round" />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-bold text-gray-900">{Math.round(score)}</span>
-        <span className="text-[9px] text-gray-400 uppercase">балл</span>
+        <span className="text-xl font-bold text-stone-900 tabular-nums">{Math.round(score)}</span>
+        <span className="text-[9px] text-stone-400 uppercase">балл</span>
       </div>
     </div>
   );
@@ -129,29 +129,26 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
   const isGood = hasScore && result!.total_score >= 55;
   const presetQuestions = hasScore ? (
     isGood ? [
-      { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Почему хороший кандидат?", q: "Объясни подробно, почему этот кандидат хороший? Какие его ключевые сильные стороны?" },
       { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для интервью", q: "Предложи 5 вопросов для интервью с этим кандидатом, чтобы глубже раскрыть его потенциал" },
       { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "На что обратить внимание?", q: "Какие потенциальные зоны риска у этого кандидата? На что обратить внимание при собеседовании?" },
     ] : [
       { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "Почему низкий балл?", q: "Объясни, почему у кандидата низкий балл? Какие основные проблемы в его анкете?" },
       { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для проверки", q: "Предложи 5 вопросов для интервью, чтобы проверить, заслуживает ли кандидат второго шанса" },
-      { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Есть ли потенциал?", q: "Есть ли у этого кандидата скрытый потенциал, который не видно по баллам? Что может говорить в его пользу?" },
     ]
   ) : [
     { icon: <Lightbulb className="w-3.5 h-3.5" />, label: "Оцени кандидата", q: "Дай краткую оценку этого кандидата на основе его анкеты. Каковы его сильные и слабые стороны?" },
     { icon: <Target className="w-3.5 h-3.5" />, label: "Вопросы для интервью", q: "Предложи 5 вопросов для интервью с этим кандидатом" },
-    { icon: <HelpCircle className="w-3.5 h-3.5" />, label: "Рекомендация", q: "Стоит ли принять этого кандидата? Дай свою рекомендацию с обоснованием" },
   ];
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"><ArrowLeft className="w-4 h-4" /></button>
-        <h2 className="text-lg font-bold text-gray-900">{candidate.full_name}</h2>
+      <div className="px-6 py-4 border-b border-stone-100 flex items-center gap-3">
+        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-stone-100 text-stone-500"><ArrowLeft className="w-4 h-4" /></button>
+        <h2 className="text-lg font-bold text-stone-900">{candidate.full_name}</h2>
         <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-          candidate.status === "approved" ? "border-green-200 bg-green-50 text-green-600" :
-          candidate.status === "rejected" ? "border-red-200 bg-red-50 text-red-600" :
-          "border-gray-200 bg-gray-50 text-gray-500"
+          candidate.status === "approved" ? "border-stone-200 bg-stone-50 text-stone-600" :
+          candidate.status === "rejected" ? "border-stone-200 bg-stone-50 text-stone-600" :
+          "border-stone-200 bg-stone-50 text-stone-500"
         }`}>
           {candidate.status === "approved" ? <><CheckCircle className="w-3 h-3" /> Одобрен</> :
            candidate.status === "rejected" ? <><XCircle className="w-3 h-3" /> Отклонён</> :
@@ -160,21 +157,21 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
         <div className="ml-auto flex items-center gap-2">
           {candidate.status === "pending" && (
             <>
-              <button onClick={onReject} className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1.5 font-medium">
+              <button onClick={onReject} className="text-xs px-3 py-1.5 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 flex items-center gap-1.5 font-medium">
                 <XCircle className="w-3.5 h-3.5" /> Отклонить
               </button>
-              <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1.5 font-semibold">
+              <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-stone-500 text-white rounded-lg hover:bg-stone-800 flex items-center gap-1.5 font-semibold">
                 <CheckCircle className="w-3.5 h-3.5" /> Одобрить
               </button>
             </>
           )}
           {candidate.status === "rejected" && (
-            <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-1.5 font-semibold">
+            <button onClick={onApprove} className="text-xs px-3 py-1.5 bg-stone-500 text-white rounded-lg hover:bg-stone-800 flex items-center gap-1.5 font-semibold">
               <CheckCircle className="w-3.5 h-3.5" /> Одобрить
             </button>
           )}
           {candidate.status === "approved" && (
-            <button onClick={onReject} className="text-xs px-3 py-1.5 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 flex items-center gap-1.5 font-medium">
+            <button onClick={onReject} className="text-xs px-3 py-1.5 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 flex items-center gap-1.5 font-medium">
               <XCircle className="w-3.5 h-3.5" /> Отклонить
             </button>
           )}
@@ -183,35 +180,35 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
 
       <div className="p-6 max-w-4xl">
         {/* Personal info card */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-orange-500" /> Личные данные
+        <div className="rounded-lg border border-stone-200 bg-white p-5 mb-4">
+          <h3 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-stone-700" /> Личные данные
           </h3>
           <div className="grid grid-cols-4 gap-3 text-sm">
-            <div><span className="text-[10px] text-gray-400 uppercase block">Возраст</span><span className="text-gray-800 font-medium">{candidate.age}</span></div>
-            <div><span className="text-[10px] text-gray-400 uppercase block">Город</span><span className="text-gray-800 font-medium">{candidate.city || "—"}</span></div>
-            <div><span className="text-[10px] text-gray-400 uppercase block">Школа</span><span className="text-gray-800 font-medium">{candidate.school_name || "—"}</span></div>
-            <div><span className="text-[10px] text-gray-400 uppercase block">GPA</span><span className="text-gray-800 font-medium">{candidate.gpa ?? "—"}</span></div>
+            <div><span className="text-[10px] text-stone-400 uppercase block">Возраст</span><span className="text-stone-800 font-medium">{candidate.age}</span></div>
+            <div><span className="text-[10px] text-stone-400 uppercase block">Город</span><span className="text-stone-800 font-medium">{candidate.city || "—"}</span></div>
+            <div><span className="text-[10px] text-stone-400 uppercase block">Школа</span><span className="text-stone-800 font-medium">{candidate.school_name || "—"}</span></div>
+            <div><span className="text-[10px] text-stone-400 uppercase block">GPA</span><span className="text-stone-800 font-medium">{candidate.gpa ?? "—"}</span></div>
           </div>
 
           {candidate.languages.length > 0 && (
-            <div className="mt-4"><span className="text-[10px] text-gray-400 uppercase block mb-1">Языки</span>
-              <div className="flex flex-wrap gap-1">{candidate.languages.map((l, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">{l}</span>)}</div>
+            <div className="mt-4"><span className="text-[10px] text-stone-400 uppercase block mb-1">Языки</span>
+              <div className="flex flex-wrap gap-1">{candidate.languages.map((l, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-50 text-stone-600 border border-stone-200">{l}</span>)}</div>
             </div>
           )}
 
           {candidate.skills.length > 0 && (
-            <div className="mt-3"><span className="text-[10px] text-gray-400 uppercase block mb-1">Навыки</span>
-              <div className="flex flex-wrap gap-1">{candidate.skills.map((s, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{s}</span>)}</div>
+            <div className="mt-3"><span className="text-[10px] text-stone-400 uppercase block mb-1">Навыки</span>
+              <div className="flex flex-wrap gap-1">{candidate.skills.map((s, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-stone-100 text-stone-600">{s}</span>)}</div>
             </div>
           )}
 
           {candidate.activities.length > 0 && (
-            <div className="mt-3"><span className="text-[10px] text-gray-400 uppercase block mb-1">Активности</span>
+            <div className="mt-3"><span className="text-[10px] text-stone-400 uppercase block mb-1">Активности</span>
               <div className="space-y-1.5">{candidate.activities.map((a, i) => (
-                <div key={i} className="text-xs text-gray-600 flex gap-2 items-start">
-                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shrink-0 mt-1" />
-                  <div><span className="font-medium text-gray-800">{a.title}</span>{a.role && <span className="text-gray-400"> — {a.role}</span>}{a.impact && <span className="text-green-600 ml-1">({a.impact})</span>}</div>
+                <div key={i} className="text-xs text-stone-600 flex gap-2 items-start">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400 shrink-0 mt-1" />
+                  <div><span className="font-medium text-stone-800">{a.title}</span>{a.role && <span className="text-stone-400"> — {a.role}</span>}{a.impact && <span className="text-stone-600 ml-1">({a.impact})</span>}</div>
                 </div>
               ))}</div>
             </div>
@@ -219,62 +216,62 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
         </div>
 
         {/* Essays */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-orange-500" /> Эссе и ответы
+        <div className="rounded-lg border border-stone-200 bg-white p-5 mb-4">
+          <h3 className="text-sm font-semibold text-stone-900 mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-stone-700" /> Эссе и ответы
           </h3>
           <div className="space-y-4">
             {candidate.essay_motivation && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Мотивация</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_motivation}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Эссе: Мотивация</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.essay_motivation}</p>
               </div>
             )}
             {candidate.essay_leadership && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Лидерство</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_leadership}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Эссе: Лидерство</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.essay_leadership}</p>
               </div>
             )}
             {candidate.essay_challenge && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Эссе: Вызовы</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.essay_challenge}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Эссе: Вызовы</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.essay_challenge}</p>
               </div>
             )}
             {candidate.why_invision && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Почему inVision U?</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.why_invision}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Почему inVision U?</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.why_invision}</p>
               </div>
             )}
             {candidate.future_goals && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Цели на 5 лет</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.future_goals}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Цели на 5 лет</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.future_goals}</p>
               </div>
             )}
             {candidate.community_contribution && (
-              <div><span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Вклад в сообщество</span>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-gray-50 rounded-lg p-3 border border-gray-100">{candidate.community_contribution}</p>
+              <div><span className="text-[10px] text-stone-400 uppercase font-semibold block mb-1">Вклад в сообщество</span>
+                <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-line bg-stone-50 rounded-lg p-3 border border-stone-100">{candidate.community_contribution}</p>
               </div>
             )}
             {!candidate.essay_motivation && !candidate.essay_leadership && !candidate.essay_challenge && (
-              <p className="text-sm text-gray-400">Нет эссе</p>
+              <p className="text-sm text-stone-400">Нет эссе</p>
             )}
           </div>
         </div>
 
         {/* Score report section */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 mb-4">
+        <div className="rounded-lg border border-stone-200 bg-white p-5 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-orange-500" /> Отчёт оценки
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-stone-700" /> Отчёт оценки
             </h3>
             <button onClick={onScore} disabled={scoring}
-              className="text-xs px-4 py-2 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+              className="text-xs px-4 py-2 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center gap-1.5">
               {scoring ? <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
                 llmActive ? <><Sparkles className="w-3.5 h-3.5" /> Сгенерировать (AI)</> : <><Cpu className="w-3.5 h-3.5" /> Сгенерировать</>}
             </button>
           </div>
 
           {!result && !scoring && (
-            <div className="text-center py-8 text-gray-400">
+            <div className="text-center py-8 text-stone-400">
               <BarChart3 className="w-10 h-10 mx-auto mb-2 opacity-20" />
               <p className="text-sm">Отчёт ещё не сгенерирован</p>
               <p className="text-xs mt-1">Нажмите кнопку выше для генерации{llmActive ? " с помощью AI" : " (эвристика)"}</p>
@@ -285,19 +282,19 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
         </div>
 
         {/* Ask AI Section */}
-        <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-white p-5 mb-4">
+        <div className="rounded-lg border border-stone-200 bg-stone-50/50 p-5 mb-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-orange-500" /> Ask AI
+            <h3 className="text-sm font-semibold text-stone-900 flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-stone-700" /> Ask AI
             </h3>
             <div className="flex items-center gap-2">
               {chatMessages.length > 0 && (
-                <button onClick={clearChat} className="text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1">
+                <button onClick={clearChat} className="text-[10px] text-stone-400 hover:text-stone-500 flex items-center gap-1">
                   <RotateCcw className="w-3 h-3" /> Очистить
                 </button>
               )}
               <button onClick={() => setChatOpen(!chatOpen)}
-                className="text-xs text-orange-600 hover:text-orange-800 font-medium">
+                className="text-xs text-stone-600 hover:text-stone-800 font-medium">
                 {chatOpen ? "Свернуть" : chatMessages.length > 0 ? `${chatMessages.length} сообщ.` : "Открыть"}
               </button>
             </div>
@@ -305,13 +302,13 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
 
           {/* Preset question buttons */}
           {!hasApiKey ? (
-            <p className="text-xs text-gray-400 text-center py-2">Для Ask AI необходим OpenAI API ключ в настройках</p>
+            <p className="text-xs text-stone-400 text-center py-2">Для Ask AI необходим OpenAI API ключ в настройках</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2 mb-3">
                 {presetQuestions.map((pq, i) => (
                   <button key={i} onClick={() => askAI(pq.q)} disabled={chatLoading}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-orange-200 bg-white text-gray-700 hover:bg-orange-50 hover:border-orange-300 flex items-center gap-1.5 transition-colors disabled:opacity-50">
+                    className="text-xs px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 hover:border-stone-300 flex items-center gap-1.5 transition-colors disabled:opacity-50">
                     {pq.icon} {pq.label}
                   </button>
                 ))}
@@ -319,18 +316,18 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
 
               {/* Chat area */}
               {(chatOpen || chatMessages.length > 0) && (
-                <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                <div className="rounded-lg border border-stone-200 bg-white overflow-hidden">
                   {/* Messages */}
                   <div className="max-h-[400px] overflow-y-auto p-3 space-y-3">
                     {chatMessages.length === 0 && !chatLoading && (
-                      <p className="text-xs text-gray-400 text-center py-4">Задайте вопрос об этом кандидате</p>
+                      <p className="text-xs text-stone-400 text-center py-4">Задайте вопрос об этом кандидате</p>
                     )}
                     {chatMessages.map((msg, i) => (
                       <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                         <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
                           msg.role === "user"
-                            ? "bg-orange-500 text-white rounded-br-sm"
-                            : "bg-gray-100 text-gray-700 rounded-bl-sm"
+                            ? "bg-stone-900 text-white rounded-br-sm"
+                            : "bg-stone-100 text-stone-700 rounded-bl-sm"
                         }`}>
                           {msg.role === "assistant" ? (
                             <div className="whitespace-pre-line leading-relaxed">{msg.content}</div>
@@ -340,11 +337,11 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
                     ))}
                     {chatLoading && (
                       <div className="flex justify-start">
-                        <div className="bg-gray-100 rounded-xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
+                        <div className="bg-stone-100 rounded-xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
                           <div className="flex gap-1">
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                            <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <div className="w-1.5 h-1.5 bg-stone-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                           </div>
                         </div>
                       </div>
@@ -353,13 +350,13 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
                   </div>
 
                   {/* Input */}
-                  <div className="border-t border-gray-200 p-2 flex gap-2">
+                  <div className="border-t border-stone-200 p-2 flex gap-2">
                     <input value={chatInput} onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); askAI(chatInput); } }}
                       placeholder="Спросите AI о кандидате..."
-                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400" />
+                      className="flex-1 px-3 py-2 text-sm rounded-lg border border-stone-200 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900" />
                     <button onClick={() => askAI(chatInput)} disabled={chatLoading || !chatInput.trim()}
-                      className="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 flex items-center">
+                      className="px-3 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 disabled:opacity-50 flex items-center">
                       <Send className="w-4 h-4" />
                     </button>
                   </div>
@@ -377,10 +374,10 @@ function ProfileView({ candidate, result, onBack, onScore, onApprove, onReject, 
 
 function ReportSection({ result }: { result: ScoringResult }) {
   const recColors: Record<string, string> = {
-    strong_recommend: "bg-green-50 text-green-700 border-green-200",
-    recommend: "bg-blue-50 text-blue-700 border-blue-200",
-    review: "bg-amber-50 text-amber-700 border-amber-200",
-    not_recommended: "bg-red-50 text-red-700 border-red-200",
+    strong_recommend: "bg-stone-50 text-stone-700 border-stone-200",
+    recommend: "bg-stone-50 text-stone-700 border-stone-200",
+    review: "bg-stone-50 text-stone-700 border-stone-200",
+    not_recommended: "bg-stone-50 text-stone-700 border-stone-200",
   };
   const isLLM = result.scoring_method === "llm";
   const llm = result.llm_analysis;
@@ -392,19 +389,19 @@ function ReportSection({ result }: { result: ScoringResult }) {
         <ScoreCircle score={result.total_score} />
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${isLLM ? "border-orange-200 bg-orange-50 text-orange-600" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${isLLM ? "border-stone-200 bg-stone-50 text-stone-600" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
               {isLLM ? <><Sparkles className="w-3 h-3" /> LLM</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
             </span>
             <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${recColors[result.recommendation] || ""}`}>
               {result.recommendation_label}
             </span>
           </div>
-          <p className="text-sm text-gray-600 leading-relaxed">{result.summary}</p>
+          <p className="text-sm text-stone-600 leading-relaxed">{result.summary}</p>
           {result.baseline_score != null && (
             <div className="mt-2 flex items-center gap-4 text-xs">
-              <span className="text-gray-400">Baseline: <span className="text-gray-600 font-medium">{result.baseline_score}</span></span>
-              <span className="text-gray-400">Score: <span className="text-gray-900 font-medium">{Math.round(result.total_score)}</span></span>
-              <span className={result.total_score > result.baseline_score ? "text-green-600 font-medium" : "text-amber-600 font-medium"}>
+              <span className="text-stone-400">Baseline: <span className="text-stone-600 font-medium">{result.baseline_score}</span></span>
+              <span className="text-stone-400">Score: <span className="text-stone-900 font-medium">{Math.round(result.total_score)}</span></span>
+              <span className={result.total_score > result.baseline_score ? "text-stone-600 font-medium" : "text-stone-600 font-medium"}>
                 {result.total_score > result.baseline_score ? "+" : ""}{Math.round(result.total_score - result.baseline_score)} vs baseline
               </span>
             </div>
@@ -414,22 +411,22 @@ function ReportSection({ result }: { result: ScoringResult }) {
 
       {/* Dimensions */}
       <div className="mb-4">
-        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Критерии оценки</h4>
+        <h4 className="text-xs font-semibold text-stone-500 uppercase mb-3">Критерии оценки</h4>
         {result.dimensions.map((dim, i) => {
           const pct = Math.round(dim.weight * 100);
-          const barColor = dim.score >= 60 ? "bg-gradient-to-r from-green-500 to-green-400" : dim.score >= 35 ? "bg-gradient-to-r from-amber-500 to-amber-400" : "bg-gradient-to-r from-red-500 to-red-400";
+          const barColor = dim.score >= 60 ? "bg-green-500" : dim.score >= 35 ? "bg-yellow-400" : "bg-red-500";
           return (
             <div key={i} className="mb-3">
               <div className="flex justify-between mb-1">
-                <span className="text-sm text-gray-600">{dim.name} <span className="text-[10px] text-gray-400">{pct}%</span></span>
-                <span className="text-sm font-bold text-gray-900">{Math.round(dim.score)}</span>
+                <span className="text-sm text-stone-600">{dim.name} <span className="text-[10px] text-stone-400">{pct}%</span></span>
+                <span className="text-sm font-bold text-stone-900">{Math.round(dim.score)}</span>
               </div>
-              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+              <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${dim.score}%` }} transition={{ duration: 0.5 }} className={`h-full rounded-full ${barColor}`} />
               </div>
               {dim.key_signals && dim.key_signals.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1.5">
-                  {dim.key_signals.slice(0, 4).map((s, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{s}</span>)}
+                  {dim.key_signals.slice(0, 4).map((s, j) => <span key={j} className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 text-stone-500">{s}</span>)}
                 </div>
               )}
             </div>
@@ -439,16 +436,16 @@ function ReportSection({ result }: { result: ScoringResult }) {
 
       {/* AI Detection */}
       <div className="mb-4">
-        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
-          <Brain className="w-3.5 h-3.5 text-orange-500" /> AI-детекция
+        <h4 className="text-xs font-semibold text-stone-500 uppercase mb-3 flex items-center gap-1.5">
+          <Brain className="w-3.5 h-3.5 text-stone-700" /> AI-детекция
         </h4>
         {result.ai_detection.is_likely_ai_generated ? (
-          <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-            <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-1"><AlertTriangle className="w-4 h-4" /> AI обнаружен ({Math.round(result.ai_detection.confidence * 100)}%)</div>
-            <ul className="ml-6">{result.ai_detection.indicators.map((ind, i) => <li key={i} className="text-xs text-red-600/70 list-disc">{ind}</li>)}</ul>
+          <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
+            <div className="flex items-center gap-2 text-stone-700 text-sm font-medium mb-1"><AlertTriangle className="w-4 h-4" /> AI обнаружен ({Math.round(result.ai_detection.confidence * 100)}%)</div>
+            <ul className="ml-6">{result.ai_detection.indicators.map((ind, i) => <li key={i} className="text-xs text-stone-600/70 list-disc">{ind}</li>)}</ul>
           </div>
         ) : (
-          <div className="rounded-lg bg-green-50 border border-green-200 p-3 flex items-center gap-2 text-green-700 text-sm">
+          <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 flex items-center gap-2 text-stone-700 text-sm">
             <ShieldCheck className="w-4 h-4" /> AI не обнаружен
           </div>
         )}
@@ -457,26 +454,26 @@ function ReportSection({ result }: { result: ScoringResult }) {
       {/* LLM Analysis */}
       {llm && (
         <div className="mb-4">
-          <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-orange-500" /> LLM-анализ
+          <h4 className="text-xs font-semibold text-stone-500 uppercase mb-3 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-stone-700" /> LLM-анализ
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {llm.hidden_strengths && llm.hidden_strengths.length > 0 && (
-              <div className="rounded-lg bg-orange-50 border border-orange-200 p-3">
-                <div className="text-[11px] text-orange-600 uppercase font-semibold mb-2">Скрытые сильные стороны</div>
-                <ul className="space-y-1">{llm.hidden_strengths.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-orange-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
+              <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
+                <div className="text-[11px] text-stone-600 uppercase font-semibold mb-2">Скрытые сильные стороны</div>
+                <ul className="space-y-1">{llm.hidden_strengths.map((s, i) => <li key={i} className="text-xs text-stone-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-stone-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
               </div>
             )}
             {llm.concerns && llm.concerns.length > 0 && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-                <div className="text-[11px] text-amber-600 uppercase font-semibold mb-2">Опасения</div>
-                <ul className="space-y-1">{llm.concerns.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-amber-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
+              <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
+                <div className="text-[11px] text-stone-600 uppercase font-semibold mb-2">Опасения</div>
+                <ul className="space-y-1">{llm.concerns.map((s, i) => <li key={i} className="text-xs text-stone-600 flex gap-2"><span className="w-1 h-1 rounded-full bg-stone-400 shrink-0 mt-1.5" />{s}</li>)}</ul>
               </div>
             )}
             {llm.interview_questions && llm.interview_questions.length > 0 && (
-              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 md:col-span-2">
-                <div className="text-[11px] text-blue-600 uppercase font-semibold mb-2">Вопросы для интервью</div>
-                <ul className="space-y-1">{llm.interview_questions.map((q, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="text-blue-500 shrink-0">{i + 1}.</span>{q}</li>)}</ul>
+              <div className="rounded-lg bg-stone-50 border border-stone-200 p-3 md:col-span-2">
+                <div className="text-[11px] text-stone-600 uppercase font-semibold mb-2">Вопросы для интервью</div>
+                <ul className="space-y-1">{llm.interview_questions.map((q, i) => <li key={i} className="text-xs text-stone-600 flex gap-2"><span className="text-stone-500 shrink-0">{i + 1}.</span>{q}</li>)}</ul>
               </div>
             )}
           </div>
@@ -485,13 +482,13 @@ function ReportSection({ result }: { result: ScoringResult }) {
 
       {/* Strengths & Areas */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="rounded-lg bg-green-50 border border-green-200 p-3">
-          <h4 className="text-[11px] font-semibold text-green-600 uppercase mb-2">Сильные стороны</h4>
-          <ul className="space-y-1">{result.strengths.length > 0 ? result.strengths.map((s, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0 mt-1" />{s}</li>) : <li className="text-xs text-gray-400">—</li>}</ul>
+        <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
+          <h4 className="text-[11px] font-semibold text-stone-600 uppercase mb-2">Сильные стороны</h4>
+          <ul className="space-y-1">{result.strengths.length > 0 ? result.strengths.map((s, i) => <li key={i} className="text-xs text-stone-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-stone-500 shrink-0 mt-1" />{s}</li>) : <li className="text-xs text-stone-400">—</li>}</ul>
         </div>
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-          <h4 className="text-[11px] font-semibold text-amber-600 uppercase mb-2">Зоны для рассмотрения</h4>
-          <ul className="space-y-1">{result.areas_for_review.length > 0 ? result.areas_for_review.map((a, i) => <li key={i} className="text-xs text-gray-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 mt-1" />{a}</li>) : <li className="text-xs text-gray-400">—</li>}</ul>
+        <div className="rounded-lg bg-stone-50 border border-stone-200 p-3">
+          <h4 className="text-[11px] font-semibold text-stone-600 uppercase mb-2">Зоны для рассмотрения</h4>
+          <ul className="space-y-1">{result.areas_for_review.length > 0 ? result.areas_for_review.map((a, i) => <li key={i} className="text-xs text-stone-600 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-stone-500 shrink-0 mt-1" />{a}</li>) : <li className="text-xs text-stone-400">—</li>}</ul>
         </div>
       </div>
     </div>
@@ -508,53 +505,64 @@ function BatchResultsView({ results, onBack, onViewCandidate }: { results: Scori
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
-        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-gray-100 text-gray-500"><ArrowLeft className="w-4 h-4" /></button>
-        <h2 className="text-lg font-bold text-gray-900">Результаты оценки</h2>
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${method === "llm" ? "border-orange-200 bg-orange-50 text-orange-600" : "border-gray-200 bg-gray-50 text-gray-500"}`}>
+      <div className="px-6 py-4 border-b border-stone-100 flex items-center gap-3">
+        <button onClick={onBack} className="p-1.5 rounded-md hover:bg-stone-100 text-stone-500"><ArrowLeft className="w-4 h-4" /></button>
+        <h2 className="text-lg font-bold text-stone-900">Результаты оценки</h2>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${method === "llm" ? "border-stone-200 bg-stone-50 text-stone-600" : "border-stone-200 bg-stone-50 text-stone-500"}`}>
           {method === "llm" ? <><Sparkles className="w-3 h-3" /> LLM</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
         </span>
-        <button onClick={() => exportCSV(results)} className="ml-auto text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
+        <button onClick={() => exportCSV(results)} className="ml-auto text-xs px-3 py-1.5 text-stone-500 hover:text-stone-700 hover:bg-stone-100 rounded-md flex items-center gap-1.5 transition-colors">
           <Download className="w-3 h-3" /> CSV
         </button>
       </div>
 
       <div className="p-6 max-w-5xl">
         <div className="grid grid-cols-4 gap-3 mb-6">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-            <div className="text-2xl font-bold text-gray-900">{results.length}</div><div className="text-[11px] text-gray-400">Всего</div>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
+            <div className="text-2xl font-bold text-stone-900 tabular-nums">{results.length}</div><div className="text-[11px] text-stone-400">Всего</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{recommended}</div><div className="text-[11px] text-gray-400">Рекомендованы</div>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
+            <div className="text-2xl font-bold text-stone-600 tabular-nums">{recommended}</div><div className="text-[11px] text-stone-400">Рекомендованы</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-            <div className="text-2xl font-bold text-gray-900">{avg}</div><div className="text-[11px] text-gray-400">Средний балл</div>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
+            <div className="text-2xl font-bold text-stone-900 tabular-nums">{avg}</div><div className="text-[11px] text-stone-400">Средний балл</div>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
-            <div className="text-2xl font-bold text-amber-600">{aiFlag}</div><div className="text-[11px] text-gray-400">AI-флаг</div>
+          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
+            <div className="text-2xl font-bold text-stone-600 tabular-nums">{aiFlag}</div><div className="text-[11px] text-stone-400">AI-флаг</div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="grid grid-cols-[40px_1fr_80px_100px_140px_60px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase font-medium">
-            <span>#</span><span>Кандидат</span><span>Балл</span><span>Метод</span><span>Рекомендация</span><span></span>
-          </div>
+        <div className="relative w-full overflow-auto rounded-lg border border-stone-200 bg-white overflow-x-auto">
+          <table className="w-full caption-bottom text-sm">
+          <thead>
+          <tr className="border-b border-stone-200 bg-stone-50/80">
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-10">#</th>
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider">Кандидат</th>
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-20">Балл</th>
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-24">Метод</th>
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider">Рекомендация</th>
+            <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-14"></th>
+          </tr>
+          </thead>
+          <tbody>
           {results.map(r => {
-            const scoreColor = r.total_score >= 70 ? "text-green-700 bg-green-50" : r.total_score >= 45 ? "text-amber-700 bg-amber-50" : "text-red-700 bg-red-50";
+            const scoreColor = r.total_score >= 70 ? "text-stone-700 bg-stone-50" : r.total_score >= 45 ? "text-stone-700 bg-stone-50" : "text-stone-700 bg-stone-50";
             return (
-              <div key={r.candidate_id} className="grid grid-cols-[40px_1fr_80px_100px_140px_60px] gap-2 px-4 py-3 border-b border-gray-100 items-center hover:bg-gray-50 text-sm">
-                <span className="text-gray-400 font-medium">{r.rank}</span>
-                <div>
-                  <span className="font-medium text-gray-800">{r.candidate_name}</span>
-                  {r.ai_detection.is_likely_ai_generated && <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200">AI</span>}
-                </div>
-                <span className={`font-bold text-center rounded py-0.5 ${scoreColor}`}>{Math.round(r.total_score)}</span>
-                <span className="text-xs text-gray-500">{r.scoring_method === "llm" ? "LLM" : "Эвристика"}</span>
-                <span className="text-xs text-gray-600">{r.recommendation_label}</span>
-                <button onClick={() => onViewCandidate(r)} className="text-orange-500 hover:text-orange-700"><Eye className="w-4 h-4" /></button>
-              </div>
+              <tr key={r.candidate_id} className="border-b border-stone-100 transition-colors hover:bg-stone-50/50">
+                <td className="px-4 py-3 align-middle text-stone-400 font-medium">{r.rank}</td>
+                <td className="px-4 py-3 align-middle">
+                  <span className="font-medium text-stone-800">{r.candidate_name}</span>
+                  {r.ai_detection.is_likely_ai_generated && <span className="ml-2 text-[9px] px-1.5 py-0.5 rounded bg-stone-50 text-stone-600 border border-stone-200">AI</span>}
+                </td>
+                <td className="px-4 py-3 align-middle"><span className={`font-bold text-center rounded py-0.5 tabular-nums px-2 ${scoreColor}`}>{Math.round(r.total_score)}</span></td>
+                <td className="px-4 py-3 align-middle text-xs text-stone-500">{r.scoring_method === "llm" ? "LLM" : "Эвристика"}</td>
+                <td className="px-4 py-3 align-middle text-xs text-stone-600">{r.recommendation_label}</td>
+                <td className="px-4 py-3 align-middle"><button onClick={() => onViewCandidate(r)} className="text-stone-700 hover:text-stone-700"><Eye className="w-4 h-4" /></button></td>
+              </tr>
             );
           })}
+          </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -567,8 +575,8 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
   const [form, setForm] = useState({ full_name: "", age: "17", city: "", school_name: "", gpa: "", essay_motivation: "", essay_leadership: "", essay_challenge: "", why_invision: "", future_goals: "", community_contribution: "", languages: "", skills: "" });
   const [acts, setActs] = useState<{ title: string; role: string; impact: string }[]>([{ title: "", role: "", impact: "" }]);
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
-  const inp = "w-full px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white";
-  const lbl = "block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1";
+  const inp = "w-full px-3 py-2 rounded-md border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 bg-white";
+  const lbl = "block text-[11px] font-semibold text-stone-500 uppercase tracking-wider mb-1";
 
   const submit = () => {
     if (!form.full_name.trim()) return;
@@ -586,11 +594,11 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl shadow-2xl w-[900px] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Добавить кандидата</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-xl border border-stone-200 w-[900px] max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-stone-900">Добавить кандидата</h2>
+          <button onClick={onClose} className="text-stone-400 hover:text-stone-700"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-6 grid grid-cols-2 gap-6">
           <div className="space-y-4">
@@ -605,14 +613,14 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
             <div><label className={lbl}>Навыки</label><input className={inp} value={form.skills} onChange={e => set("skills", e.target.value)} placeholder="Python, Leadership" /></div>
             <div>
               <div className="flex items-center justify-between mb-1"><label className={lbl + " !mb-0"}>Активности</label>
-                <button onClick={() => setActs(a => [...a, { title: "", role: "", impact: "" }])} className="text-[10px] text-orange-600 hover:underline">+ Добавить</button>
+                <button onClick={() => setActs(a => [...a, { title: "", role: "", impact: "" }])} className="text-[10px] text-stone-600 hover:underline">+ Добавить</button>
               </div>
               {acts.map((a, i) => (
                 <div key={i} className="flex gap-1.5 mb-1.5">
                   <input className={inp + " flex-1"} placeholder="Название" value={a.title} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
                   <input className={inp + " w-28"} placeholder="Роль" value={a.role} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, role: e.target.value } : x))} />
                   <input className={inp + " w-28"} placeholder="Результат" value={a.impact} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, impact: e.target.value } : x))} />
-                  {acts.length > 1 && <button onClick={() => setActs(ar => ar.filter((_, j) => j !== i))} className="text-gray-400 hover:text-red-500 px-1"><Trash2 className="w-3.5 h-3.5" /></button>}
+                  {acts.length > 1 && <button onClick={() => setActs(ar => ar.filter((_, j) => j !== i))} className="text-stone-400 hover:text-stone-500 px-1"><Trash2 className="w-3.5 h-3.5" /></button>}
                 </div>
               ))}
             </div>
@@ -625,9 +633,9 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
             <div><label className={lbl}>Цели на 5 лет</label><textarea className={inp + " min-h-[50px] resize-y"} value={form.future_goals} onChange={e => set("future_goals", e.target.value)} /></div>
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">Отмена</button>
-          <button onClick={submit} disabled={!form.full_name.trim()} className="px-5 py-2 text-sm bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50">Добавить</button>
+        <div className="px-6 py-4 border-t border-stone-100 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-stone-600 border border-stone-300 rounded-lg hover:bg-stone-50">Отмена</button>
+          <button onClick={submit} disabled={!form.full_name.trim()} className="px-5 py-2 text-sm bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50">Добавить</button>
         </div>
       </motion.div>
     </div>
@@ -670,19 +678,19 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6">
-      <h2 className="text-lg font-bold text-gray-900 mb-1">Настройки</h2>
-      <p className="text-xs text-gray-400 mb-6">Настройте режим оценки, API ключ и модель</p>
+      <h2 className="text-lg font-bold text-stone-900 mb-1">Настройки</h2>
+      <p className="text-xs text-stone-400 mb-6">Настройте режим оценки, API ключ и модель</p>
 
       <div className="max-w-lg space-y-6">
         {/* LLM Mode Toggle */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-orange-500" /> Режим оценки
+        <div className="rounded-lg border border-stone-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-stone-800 mb-3 flex items-center gap-2">
+            <Zap className="w-4 h-4 text-stone-700" /> Режим оценки
           </h3>
           <div className="flex gap-3">
             <button onClick={() => onUpdate({ ...config, llm_active: false })}
               className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors flex items-center gap-2 justify-center ${
-                !config.llm_active ? "border-gray-800 bg-gray-900 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                !config.llm_active ? "border-stone-800 bg-stone-900 text-white" : "border-stone-200 text-stone-600 hover:bg-stone-50"
               }`}>
               <Cpu className="w-4 h-4" /> Эвристика
             </button>
@@ -691,33 +699,28 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
               onUpdate({ ...config, llm_active: true });
             }}
               className={`flex-1 px-4 py-3 rounded-lg border-2 text-sm font-medium transition-colors flex items-center gap-2 justify-center ${
-                config.llm_active ? "border-orange-400 bg-orange-500 text-white" : config.has_api_key ? "border-gray-200 text-gray-600 hover:bg-gray-50" : "border-gray-100 text-gray-300 cursor-not-allowed"
+                config.llm_active ? "border-stone-900 bg-stone-900 text-white" : config.has_api_key ? "border-stone-200 text-stone-600 hover:bg-stone-50" : "border-stone-100 text-stone-300 cursor-not-allowed"
               }`}>
               <Sparkles className="w-4 h-4" /> AI (LLM)
             </button>
           </div>
           {!config.has_api_key && !config.llm_active && (
-            <p className="text-[11px] text-amber-600 mt-2">Для AI-режима необходим API ключ — настройте ниже</p>
+            <p className="text-[11px] text-stone-600 mt-2">Для AI-режима необходим API ключ — настройте ниже</p>
           )}
-          <p className="text-[11px] text-gray-400 mt-2">
-            {config.llm_active
-              ? "Все генерации отчётов будут использовать AI (LLM)"
-              : "Все генерации отчётов будут использовать эвристику (без API)"}
-          </p>
         </div>
 
         {/* API Key */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-orange-500" /> OpenAI API Key
+        <div className="rounded-lg border border-stone-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-stone-800 mb-3 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-stone-700" /> OpenAI API Key
           </h3>
           {config.has_api_key && !showKeyInput ? (
             <div className="flex items-center gap-2">
-              <div className="flex-1 px-3 py-2.5 rounded-md border border-gray-200 bg-gray-50 text-sm text-gray-700 font-mono">
+              <div className="flex-1 px-3 py-2.5 rounded-md border border-stone-200 bg-stone-50 text-sm text-stone-700 font-mono">
                 {config.masked_key || "sk-***"}
               </div>
               <button onClick={removeKey}
-                className="p-2 rounded-md border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors"
+                className="p-2 rounded-md border border-stone-200 text-stone-400 hover:text-stone-500 hover:border-stone-300 transition-colors"
                 title="Удалить ключ">
                 <X className="w-4 h-4" />
               </button>
@@ -725,30 +728,30 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
           ) : (
             <input type="password" value={key} onChange={e => setKey(e.target.value)}
               placeholder="sk-proj-..."
-              className="w-full px-3 py-2.5 rounded-md border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 bg-white font-mono" />
+              className="w-full px-3 py-2.5 rounded-md border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 bg-white font-mono" />
           )}
           <div className="mt-2 flex items-center gap-2">
             {config.has_api_key && !showKeyInput ? (
-              <span className="text-xs text-green-600 flex items-center gap-1"><Check className="w-3 h-3" /> Ключ сохранён</span>
+              <span className="text-xs text-stone-600 flex items-center gap-1"><Check className="w-3 h-3" /> Ключ сохранён</span>
             ) : (
-              <span className="text-xs text-gray-400">Вставьте ключ для AI-оценки</span>
+              <span className="text-xs text-stone-400">Вставьте ключ для AI-оценки</span>
             )}
           </div>
         </div>
 
         {/* Model */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Cpu className="w-4 h-4 text-orange-500" /> Модель
+        <div className="rounded-lg border border-stone-200 bg-white p-5">
+          <h3 className="text-sm font-semibold text-stone-800 mb-3 flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-stone-700" /> Модель
           </h3>
           <div className="space-y-2">
             {(config.available_models || []).map(m => (
-              <label key={m} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${model === m ? "border-orange-400 bg-orange-50" : "border-gray-200 hover:bg-gray-50"}`}>
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${model === m ? "border-orange-500" : "border-gray-300"}`}>
-                  {model === m && <div className="w-2 h-2 rounded-full bg-orange-500" />}
+              <label key={m} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${model === m ? "border-stone-900 bg-stone-50" : "border-stone-200 hover:bg-stone-50"}`}>
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${model === m ? "border-stone-900" : "border-stone-300"}`}>
+                  {model === m && <div className="w-2 h-2 rounded-full bg-stone-900" />}
                 </div>
-                <span className="text-sm text-gray-800 font-mono">{m}</span>
-                {MODEL_LABELS[m] && <span className="text-[10px] text-gray-400 ml-auto">{MODEL_LABELS[m]}</span>}
+                <span className="text-sm text-stone-800 font-mono">{m}</span>
+                {MODEL_LABELS[m] && <span className="text-[10px] text-stone-400 ml-auto">{MODEL_LABELS[m]}</span>}
                 <input type="radio" name="model" value={m} checked={model === m} onChange={() => setModel(m)} className="hidden" />
               </label>
             ))}
@@ -756,7 +759,7 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
         </div>
 
         <button onClick={save} disabled={saving}
-          className="w-full py-2.5 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
+          className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <><Check className="w-4 h-4" /> Сохранено</> : "Сохранить настройки"}
         </button>
       </div>
@@ -779,12 +782,12 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
   const [step, setStep] = useState(0);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
-  const inp = "w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20 bg-white transition-all";
-  const lbl = "block text-xs font-semibold text-gray-600 mb-1.5";
+  const inp = "w-full px-3 py-2.5 rounded-lg border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-2 focus:ring-stone-900/20 bg-white transition-all";
+  const lbl = "block text-xs font-semibold text-stone-600 mb-1.5";
   const txtarea = inp + " min-h-[120px] resize-y";
 
   const charCount = (text: string, max: number) => (
-    <span className={`text-[10px] ${text.length > max ? "text-red-500" : "text-gray-400"}`}>{text.length}/{max}</span>
+    <span className={`text-[10px] ${text.length > max ? "text-stone-500" : "text-stone-400"}`}>{text.length}/{max}</span>
   );
 
   const submit = async () => {
@@ -824,13 +827,13 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-stone-600" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Заявка отправлена!</h2>
-          <p className="text-sm text-gray-500 mb-6">Спасибо за подачу заявки в inVision U. Наша команда рассмотрит вашу анкету и свяжется с вами.</p>
+          <h2 className="text-xl font-bold text-stone-900 mb-2">Заявка отправлена!</h2>
+          <p className="text-sm text-stone-500 mb-6">Спасибо за подачу заявки в inVision U. Наша команда рассмотрит вашу анкету и свяжется с вами.</p>
           <button onClick={() => { setSubmitted(false); setStep(0); setForm({ full_name: "", age: "17", city: "", school_name: "", gpa: "", essay_motivation: "", essay_leadership: "", essay_challenge: "", why_invision: "", future_goals: "", community_contribution: "", languages: "", skills: "", video_transcript: "" }); setActs([{ title: "", role: "", description: "", impact: "" }]); }}
-            className="px-5 py-2.5 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 text-sm">
+            className="px-5 py-2.5 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 text-sm">
             Подать ещё одну заявку
           </button>
         </motion.div>
@@ -850,23 +853,23 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {/* Header */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-6">
+      <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white px-6 py-6">
         <h1 className="text-xl font-bold mb-1">Подача заявки в inVision U</h1>
-        <p className="text-sm text-orange-100">Заполните анкету для участия в отборе. Все поля важны для оценки вашей кандидатуры.</p>
+        <p className="text-sm text-stone-200">Заполните анкету для участия в отборе. Все поля важны для оценки вашей кандидатуры.</p>
       </div>
 
       {/* Steps indicator */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
+      <div className="px-6 py-4 border-b border-stone-200 bg-white">
         <div className="flex items-center gap-1 max-w-3xl">
           {steps.map((s, i) => (
             <div key={i} className="flex items-center flex-1">
               <button onClick={() => setStep(i)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  step === i ? "bg-orange-500 text-white" : i < step ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-400"
+                  step === i ? "bg-stone-900 text-white" : i < step ? "bg-stone-200 text-stone-700" : "bg-stone-100 text-stone-400"
                 }`}>
                 {s.icon} <span className="hidden sm:inline">{s.title}</span>
               </button>
-              {i < steps.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? "bg-orange-300" : "bg-gray-200"}`} />}
+              {i < steps.length - 1 && <div className={`flex-1 h-px mx-1 ${i < step ? "bg-stone-400" : "bg-stone-200"}`} />}
             </div>
           ))}
         </div>
@@ -880,8 +883,8 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
             {/* Step 0: Personal */}
             {step === 0 && (
               <div className="space-y-5">
-                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Users className="w-4 h-4 text-orange-500" /> Личная информация</h3>
+                <div className="rounded-lg border border-stone-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-stone-800 flex items-center gap-2"><Users className="w-4 h-4 text-stone-700" /> Личная информация</h3>
                   <div><label className={lbl}>ФИО *</label><input className={inp} value={form.full_name} onChange={e => set("full_name", e.target.value)} placeholder="Айгерим Нурланова" /></div>
                   <div className="grid grid-cols-3 gap-3">
                     <div><label className={lbl}>Возраст</label><input className={inp} type="number" min="14" max="25" value={form.age} onChange={e => set("age", e.target.value)} /></div>
@@ -896,22 +899,22 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
             {/* Step 1: Education & Skills */}
             {step === 1 && (
               <div className="space-y-5">
-                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-orange-500" /> Языки и навыки</h3>
+                <div className="rounded-lg border border-stone-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-stone-800 flex items-center gap-2"><GraduationCap className="w-4 h-4 text-stone-700" /> Языки и навыки</h3>
                   <div><label className={lbl}>Языки (через запятую)</label><input className={inp} value={form.languages} onChange={e => set("languages", e.target.value)} placeholder="Казахский, Русский, English" /></div>
                   <div><label className={lbl}>Навыки (через запятую)</label><input className={inp} value={form.skills} onChange={e => set("skills", e.target.value)} placeholder="Python, Leadership, Public Speaking" /></div>
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+                <div className="rounded-lg border border-stone-200 bg-white p-5 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Target className="w-4 h-4 text-orange-500" /> Активности и достижения</h3>
-                    {acts.length < 8 && <button onClick={() => setActs(a => [...a, { title: "", role: "", description: "", impact: "" }])} className="text-xs text-orange-600 hover:underline flex items-center gap-1"><Plus className="w-3 h-3" /> Добавить</button>}
+                    <h3 className="text-sm font-semibold text-stone-800 flex items-center gap-2"><Target className="w-4 h-4 text-stone-700" /> Активности и достижения</h3>
+                    {acts.length < 8 && <button onClick={() => setActs(a => [...a, { title: "", role: "", description: "", impact: "" }])} className="text-xs text-stone-600 hover:underline flex items-center gap-1"><Plus className="w-3 h-3" /> Добавить</button>}
                   </div>
-                  <p className="text-[11px] text-gray-400 -mt-2">Укажите кружки, проекты, волонтёрство, олимпиады и другие активности</p>
+                  <p className="text-[11px] text-stone-400 -mt-2">Укажите кружки, проекты, волонтёрство, олимпиады и другие активности</p>
                   {acts.map((a, i) => (
-                    <div key={i} className="border border-gray-100 rounded-lg p-3 space-y-2 bg-gray-50/50">
+                    <div key={i} className="border border-stone-100 rounded-lg p-3 space-y-2 bg-stone-50/50">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-400 font-mono">#{i + 1}</span>
-                        {acts.length > 1 && <button onClick={() => setActs(ar => ar.filter((_, j) => j !== i))} className="ml-auto text-gray-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>}
+                        <span className="text-[10px] text-stone-400 font-mono">#{i + 1}</span>
+                        {acts.length > 1 && <button onClick={() => setActs(ar => ar.filter((_, j) => j !== i))} className="ml-auto text-stone-400 hover:text-stone-500"><Trash2 className="w-3.5 h-3.5" /></button>}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <input className={inp} placeholder="Название (напр. Клуб робототехники)" value={a.title} onChange={e => setActs(ar => ar.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
@@ -928,9 +931,9 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
             {/* Step 2: Essays */}
             {step === 2 && (
               <div className="space-y-5">
-                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><FileText className="w-4 h-4 text-orange-500" /> Эссе</h3>
-                  <p className="text-[11px] text-gray-400 -mt-2">Пишите от себя, конкретно и честно. Расскажите реальные истории из вашего опыта.</p>
+                <div className="rounded-lg border border-stone-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-stone-800 flex items-center gap-2"><FileText className="w-4 h-4 text-stone-700" /> Эссе</h3>
+                  <p className="text-[11px] text-stone-400 -mt-2">Пишите от себя, конкретно и честно. Расскажите реальные истории из вашего опыта.</p>
                   <div>
                     <div className="flex items-center justify-between"><label className={lbl}>Мотивация: Почему вы хотите учиться в inVision U?</label>{charCount(form.essay_motivation, 2000)}</div>
                     <textarea className={txtarea} value={form.essay_motivation} onChange={e => set("essay_motivation", e.target.value)} placeholder="Расскажите, что вас мотивирует, почему именно inVision U, какие цели вы хотите достичь..." />
@@ -950,8 +953,8 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
             {/* Step 3: About & InVision */}
             {step === 3 && (
               <div className="space-y-5">
-                <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-orange-500" /> О вас и inVision U</h3>
+                <div className="rounded-lg border border-stone-200 bg-white p-5 space-y-4">
+                  <h3 className="text-sm font-semibold text-stone-800 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-stone-700" /> О вас и inVision U</h3>
                   <div>
                     <div className="flex items-center justify-between"><label className={lbl}>Почему именно inVision U?</label>{charCount(form.why_invision, 1000)}</div>
                     <textarea className={inp + " min-h-[80px] resize-y"} value={form.why_invision} onChange={e => set("why_invision", e.target.value)} placeholder="Что особенного в inVision U для вас?" />
@@ -971,14 +974,14 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
                 </div>
 
                 {/* Summary before submit */}
-                <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
-                  <h3 className="text-sm font-semibold text-orange-800 mb-2">Перед отправкой</h3>
-                  <ul className="text-xs text-orange-700 space-y-1">
-                    <li className="flex items-center gap-2">{form.full_name ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} ФИО: {form.full_name || "не указано"}</li>
-                    <li className="flex items-center gap-2">{form.essay_motivation.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе мотивация: {form.essay_motivation.length} символов</li>
-                    <li className="flex items-center gap-2">{form.essay_leadership.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе лидерство: {form.essay_leadership.length} символов</li>
-                    <li className="flex items-center gap-2">{form.essay_challenge.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Эссе вызовы: {form.essay_challenge.length} символов</li>
-                    <li className="flex items-center gap-2">{acts.filter(a => a.title).length > 0 ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />} Активности: {acts.filter(a => a.title).length}</li>
+                <div className="rounded-xl border border-stone-200 bg-stone-50 p-5">
+                  <h3 className="text-sm font-semibold text-stone-800 mb-2">Перед отправкой</h3>
+                  <ul className="text-xs text-stone-700 space-y-1">
+                    <li className="flex items-center gap-2">{form.full_name ? <CheckCircle className="w-3.5 h-3.5 text-stone-600" /> : <XCircle className="w-3.5 h-3.5 text-stone-400" />} ФИО: {form.full_name || "не указано"}</li>
+                    <li className="flex items-center gap-2">{form.essay_motivation.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-stone-600" /> : <XCircle className="w-3.5 h-3.5 text-stone-400" />} Эссе мотивация: {form.essay_motivation.length} символов</li>
+                    <li className="flex items-center gap-2">{form.essay_leadership.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-stone-600" /> : <XCircle className="w-3.5 h-3.5 text-stone-400" />} Эссе лидерство: {form.essay_leadership.length} символов</li>
+                    <li className="flex items-center gap-2">{form.essay_challenge.length > 50 ? <CheckCircle className="w-3.5 h-3.5 text-stone-600" /> : <XCircle className="w-3.5 h-3.5 text-stone-400" />} Эссе вызовы: {form.essay_challenge.length} символов</li>
+                    <li className="flex items-center gap-2">{acts.filter(a => a.title).length > 0 ? <CheckCircle className="w-3.5 h-3.5 text-stone-600" /> : <XCircle className="w-3.5 h-3.5 text-stone-400" />} Активности: {acts.filter(a => a.title).length}</li>
                   </ul>
                 </div>
               </div>
@@ -989,18 +992,18 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
         {/* Navigation */}
         <div className="flex items-center justify-between mt-6">
           {step > 0 ? (
-            <button onClick={() => setStep(s => s - 1)} className="px-4 py-2.5 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-1.5">
+            <button onClick={() => setStep(s => s - 1)} className="px-4 py-2.5 text-sm text-stone-600 border border-stone-300 rounded-lg hover:bg-stone-50 flex items-center gap-1.5">
               <ArrowLeft className="w-4 h-4" /> Назад
             </button>
           ) : <div />}
           {step < 3 ? (
             <button onClick={() => setStep(s => s + 1)} disabled={!canNext}
-              className="px-5 py-2.5 text-sm bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+              className="px-5 py-2.5 text-sm bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center gap-1.5">
               Далее <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
             <button onClick={submit} disabled={submitting || !form.full_name.trim()}
-              className="px-6 py-2.5 text-sm bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-6 py-2.5 text-sm bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center gap-2">
               {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send className="w-4 h-4" />}
               Отправить заявку
             </button>
@@ -1014,9 +1017,9 @@ function ApplicationForm({ onSubmitted }: { onSubmitted: () => void }) {
 // ─── Talents Page ────────────────────────────────────────
 
 const SOURCE_LABELS: Record<string, string> = { imo: "IMO", ioi: "IOI", ipho: "IPhO", icho: "IChO", izho: "IZhO" };
-const SOURCE_COLORS: Record<string, string> = { imo: "bg-purple-100 text-purple-700", ioi: "bg-green-100 text-green-700", ipho: "bg-red-100 text-red-700", icho: "bg-yellow-100 text-yellow-700", izho: "bg-teal-100 text-teal-700" };
+const SOURCE_COLORS: Record<string, string> = { imo: "bg-stone-100 text-stone-700", ioi: "bg-stone-100 text-stone-700", ipho: "bg-stone-100 text-stone-700", icho: "bg-stone-100 text-stone-700", izho: "bg-stone-100 text-stone-700" };
 const STATUS_LABELS: Record<string, string> = { discovered: "Найден", contacted: "Связались", applied: "Подал заявку", ignored: "Пропущен" };
-const STATUS_COLORS: Record<string, string> = { discovered: "bg-gray-100 text-gray-600", contacted: "bg-blue-100 text-blue-700", applied: "bg-green-100 text-green-700", ignored: "bg-red-100 text-red-500" };
+const STATUS_COLORS: Record<string, string> = { discovered: "bg-stone-100 text-stone-600", contacted: "bg-stone-100 text-stone-700", applied: "bg-stone-100 text-stone-700", ignored: "bg-stone-100 text-stone-500" };
 
 function TalentsPage() {
   const [talents, setTalents] = useState<Talent[]>([]);
@@ -1044,7 +1047,7 @@ function TalentsPage() {
     try {
       const res = await fetch(`${API}/talents/scrape`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sources, min_rating: 1400, min_year: 2019, max_results: 50 }),
+        body: JSON.stringify({ sources }),
       });
       const data = await res.json();
       await load();
@@ -1093,23 +1096,23 @@ function TalentsPage() {
     return t.achievements[0];
   };
 
-  if (loading) return <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin" /></div>;
+  if (loading) return <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-3 border-stone-200 border-t-stone-900 rounded-full animate-spin" /></div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
-        <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2"><Search className="w-5 h-5 text-orange-500" /> Поиск талантов</h1>
-        <span className="text-xs text-gray-400">{talents.length} найдено</span>
+      <div className="px-6 py-4 border-b border-stone-200 flex items-center gap-3">
+        <h1 className="text-lg font-bold text-stone-900 flex items-center gap-2"><Search className="w-5 h-5 text-stone-700" /> Поиск талантов</h1>
+        <span className="text-xs text-stone-400">{talents.length} найдено</span>
         <div className="ml-auto flex items-center gap-2">
-          <button onClick={() => scrape(["codeforces", "imo", "ioi"])} disabled={scraping}
-            className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1.5">
+          <button onClick={() => scrape(["imo", "ioi", "ipho", "icho", "izho"])} disabled={scraping}
+            className="text-xs px-3 py-1.5 bg-stone-900 text-white rounded-md font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center gap-1.5">
             {scraping ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Globe className="w-3 h-3" />}
             {scraping ? "Ищем..." : "Найти таланты"}
           </button>
           {talents.some(t => !t.ai_profile) && (
             <button onClick={enrichAll} disabled={enriching !== null}
-              className="text-xs px-3 py-1.5 border border-orange-300 text-orange-600 rounded-md font-semibold hover:bg-orange-50 disabled:opacity-50 flex items-center gap-1.5">
+              className="text-xs px-3 py-1.5 border border-stone-300 text-stone-600 rounded-md font-semibold hover:bg-stone-50 disabled:opacity-50 flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" /> AI профили
             </button>
           )}
@@ -1117,22 +1120,12 @@ function TalentsPage() {
       </div>
 
       {/* Stats bar */}
-      {stats && stats.total > 0 && (
-        <div className="px-6 py-2 border-b border-gray-100 flex items-center gap-4 text-[11px]">
-          {Object.entries(stats.by_source || {}).map(([src, count]) => (
-            <span key={src} className={`px-2 py-0.5 rounded-full font-medium ${SOURCE_COLORS[src] || "bg-gray-100"}`}>
-              {SOURCE_LABELS[src] || src}: {count as number}
-            </span>
-          ))}
-        </div>
-      )}
-
       {/* Source filter */}
-      <div className="px-6 py-2 border-b border-gray-100 flex gap-1">
-        {["all", "codeforces", "imo", "ioi", "ipho", "icho", "izho"].map(s => (
+      <div className="px-6 py-2 border-b border-stone-100 flex gap-1">
+        {["all", "imo", "ioi", "ipho", "icho", "izho"].map(s => (
           <button key={s} onClick={() => setSourceFilter(s)}
             className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-colors ${
-              sourceFilter === s ? "bg-orange-500 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              sourceFilter === s ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-500 hover:bg-stone-200"
             }`}>
             {s === "all" ? "Все" : SOURCE_LABELS[s] || s}
           </button>
@@ -1142,45 +1135,45 @@ function TalentsPage() {
       {/* Table */}
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+          <div className="flex flex-col items-center justify-center h-64 text-stone-400">
             <Search className="w-10 h-10 mb-3 opacity-30" />
             <p className="text-sm">Нет найденных талантов</p>
             <p className="text-xs mt-1">Нажмите "Найти таланты" для поиска</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-stone-100">
             {filtered.map((t, i) => {
               const best = bestAchievement(t);
               const isExpanded = expanded === t.id;
               return (
-                <div key={t.id} className="hover:bg-orange-50/30 transition-colors">
+                <div key={t.id} className="hover:bg-stone-50/50 transition-colors">
                   <div className="px-6 py-3 flex items-center gap-3 cursor-pointer" onClick={() => setExpanded(isExpanded ? null : t.id)}>
-                    <span className="text-[10px] text-gray-400 w-6">{i + 1}</span>
+                    <span className="text-[10px] text-stone-400 w-6">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800 truncate">{t.full_name}</span>
+                        <span className="text-sm font-medium text-stone-800 truncate">{t.full_name}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${SOURCE_COLORS[t.source]}`}>
                           {SOURCE_LABELS[t.source]}
                         </span>
-                        {t.ai_profile?.estimated_strength === "high" && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />}
+                        {t.ai_profile?.estimated_strength === "high" && <Star className="w-3 h-3 text-stone-900 fill-stone-900" />}
                       </div>
-                      <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5">
+                      <div className="text-[11px] text-stone-400 flex items-center gap-2 mt-0.5">
                         {t.city && <span>{t.city}</span>}
                         {t.organization && <span>• {t.organization}</span>}
-                        {best && <span className="text-orange-600 font-medium">• {best.competition}: {best.result}{best.score ? ` (${best.score})` : ""}</span>}
+                        {best && <span className="text-stone-600 font-medium">• {best.competition}: {best.result}{best.score ? ` (${best.score})` : ""}</span>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       {t.ai_profile?.potential_score_estimate && (
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          t.ai_profile.potential_score_estimate >= 70 ? "bg-green-100 text-green-700" :
-                          t.ai_profile.potential_score_estimate >= 50 ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-500"
+                          t.ai_profile.potential_score_estimate >= 70 ? "bg-stone-100 text-stone-700" :
+                          t.ai_profile.potential_score_estimate >= 50 ? "bg-stone-100 text-stone-700" : "bg-stone-100 text-stone-500"
                         }`}>{t.ai_profile.potential_score_estimate}</span>
                       )}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full ${STATUS_COLORS[t.status]}`}>
                         {STATUS_LABELS[t.status]}
                       </span>
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      <ChevronDown className={`w-4 h-4 text-stone-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                     </div>
                   </div>
 
@@ -1192,14 +1185,14 @@ function TalentsPage() {
                         <div className="px-6 pb-4 pl-12 space-y-3">
                           {/* Achievements */}
                           <div>
-                            <h4 className="text-[11px] font-semibold text-gray-500 uppercase mb-1">Достижения</h4>
+                            <h4 className="text-[11px] font-semibold text-stone-500 uppercase mb-1">Достижения</h4>
                             <div className="flex flex-wrap gap-1.5">
                               {t.achievements.map((a, j) => (
                                 <span key={j} className={`text-[11px] px-2 py-1 rounded-md border ${
-                                  a.result === "Gold" ? "bg-yellow-50 border-yellow-300 text-yellow-800" :
-                                  a.result === "Silver" ? "bg-gray-50 border-gray-300 text-gray-700" :
-                                  a.result === "Bronze" ? "bg-orange-50 border-orange-300 text-orange-800" :
-                                  "bg-blue-50 border-blue-200 text-blue-700"
+                                  a.result === "Gold" ? "bg-stone-900 border-stone-700 text-white" :
+                                  a.result === "Silver" ? "bg-stone-50 border-stone-300 text-stone-700" :
+                                  a.result === "Bronze" ? "bg-stone-50 border-stone-300 text-stone-800" :
+                                  "bg-stone-50 border-stone-200 text-stone-700"
                                 }`}>
                                   {a.competition}: {a.result} {a.score ? `(${a.score})` : ""}
                                 </span>
@@ -1209,21 +1202,21 @@ function TalentsPage() {
 
                           {/* AI Profile */}
                           {t.ai_profile && !t.ai_profile.error && (
-                            <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 space-y-2">
-                              <h4 className="text-[11px] font-semibold text-purple-700 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI Профиль</h4>
-                              <p className="text-xs text-gray-700">{t.ai_profile.summary}</p>
+                            <div className="rounded-lg border border-stone-200 bg-stone-50/50 p-3 space-y-2">
+                              <h4 className="text-[11px] font-semibold text-stone-700 uppercase flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI Профиль</h4>
+                              <p className="text-xs text-stone-700">{t.ai_profile.summary}</p>
                               {t.ai_profile.key_qualities && (
                                 <div className="flex flex-wrap gap-1">
                                   {t.ai_profile.key_qualities.map((q: string, j: number) => (
-                                    <span key={j} className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full">{q}</span>
+                                    <span key={j} className="text-[10px] px-2 py-0.5 bg-stone-100 text-stone-700 rounded-full">{q}</span>
                                   ))}
                                 </div>
                               )}
                               {t.ai_profile.recommended_track && (
-                                <p className="text-[11px] text-gray-500">Рек. направление: <span className="font-medium text-purple-700">{t.ai_profile.recommended_track}</span></p>
+                                <p className="text-[11px] text-stone-500">Рек. направление: <span className="font-medium text-stone-700">{t.ai_profile.recommended_track}</span></p>
                               )}
                               {t.ai_profile.outreach_suggestion && (
-                                <p className="text-[11px] text-gray-500">Как связаться: <span className="text-gray-700">{t.ai_profile.outreach_suggestion}</span></p>
+                                <p className="text-[11px] text-stone-500">Как связаться: <span className="text-stone-700">{t.ai_profile.outreach_suggestion}</span></p>
                               )}
                             </div>
                           )}
@@ -1232,24 +1225,20 @@ function TalentsPage() {
                           <div className="flex items-center gap-2">
                             {t.profile_url && (
                               <a href={t.profile_url} target="_blank" rel="noopener noreferrer"
-                                className="text-[11px] px-2.5 py-1 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1 no-underline">
+                                className="text-[11px] px-2.5 py-1 border border-stone-300 rounded-md text-stone-600 hover:bg-stone-50 flex items-center gap-1 no-underline">
                                 <ExternalLink className="w-3 h-3" /> Профиль
                               </a>
                             )}
                             {!t.ai_profile && (
                               <button onClick={() => enrich(t.id)} disabled={enriching === t.id}
-                                className="text-[11px] px-2.5 py-1 border border-purple-300 rounded-md text-purple-600 hover:bg-purple-50 disabled:opacity-50 flex items-center gap-1">
-                                {enriching === t.id ? <div className="w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                className="text-[11px] px-2.5 py-1 border border-stone-300 rounded-md text-stone-600 hover:bg-stone-50 disabled:opacity-50 flex items-center gap-1">
+                                {enriching === t.id ? <div className="w-3 h-3 border-2 border-stone-300 border-t-stone-900 rounded-full animate-spin" /> : <Sparkles className="w-3 h-3" />}
                                 AI анализ
                               </button>
                             )}
                             <button onClick={() => updateStatus(t.id, "contacted")}
-                              className="text-[11px] px-2.5 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center gap-1">
+                              className="text-[11px] px-2.5 py-1 bg-stone-500 text-white rounded-md hover:bg-stone-800 flex items-center gap-1">
                               <MessageCircle className="w-3 h-3" /> Связаться
-                            </button>
-                            <button onClick={() => updateStatus(t.id, "ignored")}
-                              className="text-[11px] px-2.5 py-1 border border-gray-300 rounded-md text-gray-400 hover:text-red-500 hover:border-red-300">
-                              Пропустить
                             </button>
                           </div>
                         </div>
@@ -1268,7 +1257,106 @@ function TalentsPage() {
 
 // ─── Main App ───────────────────────────────────────────
 
+function LoginPage({ onLogin }: { onLogin: (token: string, email: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.detail || "Ошибка входа");
+        return;
+      }
+      const data = await res.json();
+      onLogin(data.token, data.email);
+    } catch {
+      setError("Ошибка соединения с сервером");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-50 font-['Plus_Jakarta_Sans',sans-serif] flex items-center justify-center">
+      <div className="w-full max-w-sm">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-900"><GraduationCap className="h-5 w-5 text-white" /></div>
+          <div>
+            <div className="text-lg font-bold text-stone-900 leading-tight">inVision U</div>
+            <div className="text-xs text-stone-400">AI Screening System</div>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-stone-200 p-6 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1.5">Почта</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+              className="w-full px-3 py-2.5 rounded-lg border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 bg-white"
+              placeholder="email@example.com" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-stone-600 mb-1.5">Пароль</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+              className="w-full px-3 py-2.5 rounded-lg border border-stone-300 text-sm text-stone-800 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 bg-white"
+              placeholder="Введите пароль" />
+          </div>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button type="submit" disabled={loading}
+            className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 text-sm transition-colors">
+            {loading ? "Вход..." : "Войти"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem("auth_token"));
+  const [authEmail, setAuthEmail] = useState<string | null>(() => localStorage.getItem("auth_email"));
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    if (!authToken) { setAuthChecked(true); return; }
+    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${authToken}` } })
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => { setAuthEmail(data.email); setAuthChecked(true); })
+      .catch(() => { localStorage.removeItem("auth_token"); localStorage.removeItem("auth_email"); setAuthToken(null); setAuthEmail(null); setAuthChecked(true); });
+  }, []);
+
+  const handleLogin = (token: string, email: string) => {
+    localStorage.setItem("auth_token", token);
+    localStorage.setItem("auth_email", email);
+    setAuthToken(token);
+    setAuthEmail(email);
+  };
+
+  const handleLogout = () => {
+    if (authToken) fetch(`${API}/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${authToken}` } }).catch(() => {});
+    localStorage.removeItem("auth_token");
+    localStorage.removeItem("auth_email");
+    setAuthToken(null);
+    setAuthEmail(null);
+  };
+
+  if (!authChecked) return <div className="min-h-screen bg-stone-50 flex items-center justify-center"><div className="w-8 h-8 border-3 border-stone-200 border-t-stone-900 rounded-full animate-spin" /></div>;
+
+  if (!authToken && window.location.hash !== "#apply") return <LoginPage onLogin={handleLogin} />;
+
+  return <AuthenticatedApp authEmail={authEmail} onLogout={handleLogout} />;
+}
+
+function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; onLogout: () => void }) {
   const [page, setPage] = useState<Page>(() => window.location.hash === "#apply" ? "apply" : "candidates");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [config, setConfig] = useState<ConfigState>({ has_api_key: false, masked_key: "", model: "gpt-4.1", available_models: [], llm_active: false });
@@ -1410,9 +1498,9 @@ export default function App() {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode; color: string }[] = [
-    { id: "pending", label: "На рассмотрении", icon: <Clock className="w-4 h-4" />, color: "text-amber-600" },
-    { id: "approved", label: "Одобренные", icon: <UserCheck className="w-4 h-4" />, color: "text-green-600" },
-    { id: "rejected", label: "Отклонённые", icon: <UserX className="w-4 h-4" />, color: "text-red-500" },
+    { id: "pending", label: "На рассмотрении", icon: <Clock className="w-4 h-4" />, color: "text-stone-900" },
+    { id: "approved", label: "Одобренные", icon: <UserCheck className="w-4 h-4" />, color: "text-stone-900" },
+    { id: "rejected", label: "Отклонённые", icon: <UserX className="w-4 h-4" />, color: "text-stone-900" },
   ];
 
   const filteredCandidates = candidates.filter(c => c.status === activeTab);
@@ -1425,20 +1513,20 @@ export default function App() {
   const sidebarItems = [
     { id: "candidates" as Page, label: "Кандидаты", icon: <Table className="w-4 h-4" /> },
     { id: "talents" as Page, label: "Таланты", icon: <Search className="w-4 h-4" /> },
-    { id: "settings" as Page, label: "Настройки", icon: <Settings className="w-4 h-4" /> },
   ];
+  const settingsItem = { id: "settings" as Page, label: "Настройки", icon: <Settings className="w-4 h-4" /> };
 
   // ─── Standalone public form ──────────────────────────────
   if (page === "apply") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 font-sans">
+      <div className="min-h-screen bg-stone-50 font-['Plus_Jakarta_Sans',sans-serif]">
         <div className="max-w-4xl mx-auto flex flex-col min-h-screen">
           {/* Public header */}
-          <header className="flex items-center gap-3 px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500"><GraduationCap className="h-4 w-4 text-white" /></div>
+          <header className="flex items-center gap-3 px-6 py-4 border-b border-stone-200 bg-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-stone-900"><GraduationCap className="h-4 w-4 text-white" /></div>
             <div>
-              <div className="text-sm font-bold text-gray-800">inVision U</div>
-              <div className="text-[10px] text-gray-400">AI Screening System</div>
+              <div className="text-sm font-bold text-stone-800">inVision U</div>
+              <div className="text-[10px] text-stone-400">AI Screening System</div>
             </div>
           </header>
           <ApplicationForm onSubmitted={() => {}} />
@@ -1448,56 +1536,54 @@ export default function App() {
   }
 
   return (
-    <div className="relative min-h-screen bg-blue-50 overflow-hidden font-sans">
-      {/* Background */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-blue-700 opacity-50" />
-        <div className="absolute bottom-0 right-0 w-3/4 h-3/4 bg-blue-600 transform origin-bottom-right rotate-12 translate-y-1/3 -translate-x-1/4 opacity-90" />
-        <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-blue-700 opacity-80" />
-        <div className="absolute top-0 left-0 w-1/2 h-full bg-blue-400 transform -skew-y-6 origin-top-left -translate-y-1/4 opacity-30" />
-      </div>
-
-      <div className="relative z-10 flex min-h-screen">
+    <div className="min-h-screen bg-stone-50 font-['Plus_Jakarta_Sans',sans-serif]">
+      <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside className="w-[200px] shrink-0 bg-white/95 backdrop-blur-sm shadow-lg flex flex-col">
-          <div className="flex items-center gap-2 px-4 py-4 border-b border-gray-100">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-orange-500"><GraduationCap className="h-3.5 w-3.5 text-white" /></div>
-            <div className="text-sm font-bold text-gray-800 leading-tight">inVision U</div>
+        <aside className="w-[220px] shrink-0 bg-stone-900 flex flex-col">
+          <div className="flex items-center gap-3 px-5 py-5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white"><GraduationCap className="h-4 w-4 text-stone-900" /></div>
+            <div>
+              <div className="text-sm font-bold text-white leading-tight">inVision U</div>
+              <div className="text-[10px] text-stone-500">AI Screening</div>
+            </div>
           </div>
-          <nav className="flex-1 px-2 py-3 space-y-0.5">
+          <nav className="flex-1 px-3 py-4 space-y-1">
             {sidebarItems.map(item => (
               <button key={item.id} onClick={() => { setPage(item.id); setSelectedCandidate(null); setBatchResults(null); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                   page === item.id || (["profile", "report"].includes(page) && item.id === "candidates")
-                    ? "bg-orange-50 text-orange-700 font-semibold" : "text-gray-600 hover:bg-gray-50"
+                    ? "bg-white/10 text-white font-semibold" : "text-stone-400 hover:bg-white/5 hover:text-stone-200"
                 }`}>
                 {item.icon}{item.label}
               </button>
             ))}
           </nav>
-          {/* Status counts */}
-          <div className="px-3 py-2 border-t border-gray-100 space-y-1">
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
-              <Clock className="w-3 h-3 text-amber-500" /> <span>{counts.pending} на рассм.</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
-              <UserCheck className="w-3 h-3 text-green-500" /> <span>{counts.approved} одобрено</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 px-1">
-              <UserX className="w-3 h-3 text-red-400" /> <span>{counts.rejected} отклонено</span>
-            </div>
+          <div className="px-3 pb-2">
+            <button onClick={() => { setPage(settingsItem.id); setSelectedCandidate(null); setBatchResults(null); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                page === settingsItem.id
+                  ? "bg-white/10 text-white font-semibold" : "text-stone-400 hover:bg-white/5 hover:text-stone-200"
+              }`}>
+              {settingsItem.icon}{settingsItem.label}
+            </button>
           </div>
-          <div className="px-3 py-3 border-t border-gray-100">
-            <div className={`text-[10px] px-2 py-1.5 rounded-md flex items-center gap-1.5 font-medium ${
-              config.llm_active ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-gray-50 text-gray-500 border border-gray-200"
+          <div className="px-4 py-4 border-t border-stone-800 space-y-3">
+            <div className={`text-[10px] px-2.5 py-1.5 rounded-md flex items-center gap-1.5 font-medium ${
+              config.llm_active ? "bg-white/10 text-stone-300 border border-white/10" : "bg-stone-800 text-stone-500 border border-stone-700"
             }`}>
               {config.llm_active ? <><Sparkles className="w-3 h-3" /> AI: {config.model}</> : <><Cpu className="w-3 h-3" /> Эвристика</>}
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-stone-400 truncate">{authEmail}</span>
+              <button onClick={onLogout} title="Выйти" className="p-1 rounded text-stone-500 hover:text-white hover:bg-white/10 transition-colors">
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </aside>
 
         {/* Main */}
-        <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-white/60 backdrop-blur-sm">
+        <main className="flex-1 flex flex-col min-h-screen overflow-hidden bg-white">
           {/* Profile view */}
           {page === "profile" && selectedCandidate && (
             <ProfileView
@@ -1532,22 +1618,22 @@ export default function App() {
           {page === "candidates" && (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
-                <h1 className="text-lg font-bold text-gray-900">Кандидаты</h1>
-                <span className="text-xs text-gray-400">{candidates.length} всего</span>
+              <div className="px-6 py-4 border-b border-stone-200 flex items-center gap-3">
+                <h1 className="text-lg font-bold text-stone-900">Кандидаты</h1>
+                <span className="text-xs text-stone-400">{candidates.length} всего</span>
 
                 <div className="ml-auto flex items-center gap-2">
                   <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={e => { if (e.target.files?.[0]) importFile(e.target.files[0]); e.target.value = ""; }} />
-                  <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5">
+                  <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-stone-300 rounded-md text-stone-600 hover:bg-stone-50 flex items-center gap-1.5">
                     <Upload className="w-3 h-3" /> Импорт
                   </button>
-                  <a href="/#apply" target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5 no-underline">
-                    <Plus className="w-3 h-3" /> Форма заявки
+                  <a href="/#apply" target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 border border-stone-300 text-stone-600 rounded-md hover:bg-stone-50 flex items-center gap-1.5 no-underline">
+                    <ExternalLink className="w-3 h-3" /> Форма заявки
                   </a>
 
                   {filteredCandidates.length > 0 && (
                     <button onClick={scoreAll} disabled={scoring}
-                      className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-md font-semibold hover:bg-gray-800 disabled:opacity-50 flex items-center gap-1.5">
+                      className="text-xs px-3 py-1.5 bg-stone-900 text-white rounded-md font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center gap-1.5">
                       {scoring ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> :
                         config.llm_active ? <Sparkles className="w-3 h-3" /> : <Cpu className="w-3 h-3" />}
                       Оценить всех
@@ -1557,17 +1643,17 @@ export default function App() {
               </div>
 
               {/* Tabs */}
-              <div className="px-6 pt-3 flex gap-1 border-b border-gray-200">
+              <div className="px-6 pt-3 flex gap-1 border-b border-stone-200">
                 {tabs.map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors border-b-2 -mb-px ${
                       activeTab === tab.id
                         ? `${tab.color} border-current bg-white`
-                        : "text-gray-400 border-transparent hover:text-gray-600"
+                        : "text-stone-400 border-transparent hover:text-stone-600"
                     }`}>
                     {tab.icon} {tab.label}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ml-1 ${
-                      activeTab === tab.id ? "bg-current/10" : "bg-gray-100"
+                      activeTab === tab.id ? "bg-current/10" : "bg-stone-100"
                     }`}>{counts[tab.id]}</span>
                   </button>
                 ))}
@@ -1576,7 +1662,7 @@ export default function App() {
               {/* Table */}
               <div className="flex-1 overflow-y-auto px-6 py-4">
                 {filteredCandidates.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-3">
+                  <div className="flex flex-col items-center justify-center h-64 text-stone-400 gap-3">
                     {activeTab === "pending" ? <Clock className="w-12 h-12 opacity-20" /> :
                      activeTab === "approved" ? <UserCheck className="w-12 h-12 opacity-20" /> :
                      <UserX className="w-12 h-12 opacity-20" />}
@@ -1585,65 +1671,77 @@ export default function App() {
                        activeTab === "approved" ? "Нет одобренных кандидатов" :
                        "Нет отклонённых кандидатов"}
                     </p>
-                    {activeTab === "pending" && (
-                      <div className="flex gap-2">
-                        <button onClick={() => fileRef.current?.click()} className="text-xs px-3 py-1.5 border border-gray-300 rounded-md text-gray-600 hover:bg-gray-50 flex items-center gap-1.5"><Upload className="w-3 h-3" /> Импорт</button>
-                        <a href="/#apply" target="_blank" rel="noopener noreferrer" className="text-xs px-3 py-1.5 bg-orange-500 text-white rounded-md font-semibold hover:bg-orange-600 flex items-center gap-1.5 no-underline"><Plus className="w-3 h-3" /> Форма заявки</a>
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-                    <div className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_80px_100px] gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-200 text-[11px] text-gray-500 uppercase font-medium">
-                      <span>#</span><span>ФИО</span><span>Возр.</span><span>Город</span><span>Школа</span><span>GPA</span><span>Акт.</span><span>Оценка</span><span>Действия</span>
-                    </div>
+                  <div className="relative w-full overflow-auto rounded-lg border border-stone-200 bg-white overflow-x-auto">
+                    <table className="w-full caption-bottom text-sm">
+                    <thead>
+                    <tr className="border-b border-stone-200 bg-stone-50/80">
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-10">#</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider">ФИО</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-14">Возр.</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider">Город</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider">Школа</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-14">GPA</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-14">Акт.</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-20">Оценка</th>
+                      <th className="h-11 px-4 text-left align-middle text-xs font-medium text-stone-500 uppercase tracking-wider w-24">Действия</th>
+                    </tr>
+                    </thead>
+                    <tbody>
                     {filteredCandidates.map((c, i) => {
                       const r = results.get(c.id);
                       const isScoring = scoringId === c.id;
                       return (
-                        <div key={c.id} onClick={() => { setSelectedCandidate(c); setPage("profile"); }}
-                          className="grid grid-cols-[40px_1.5fr_50px_0.8fr_0.8fr_60px_60px_80px_100px] gap-2 px-4 py-3 border-b border-gray-100 items-center hover:bg-orange-50/40 text-sm cursor-pointer transition-colors">
-                          <span className="text-gray-400 text-xs">{i + 1}</span>
-                          <span className="font-medium text-gray-800 truncate">{c.full_name}</span>
-                          <span className="text-gray-600">{c.age}</span>
-                          <span className="text-gray-600 truncate">{c.city || "—"}</span>
-                          <span className="text-gray-500 truncate text-xs">{c.school_name || "—"}</span>
-                          <span className="text-gray-600">{c.gpa ?? "—"}</span>
-                          <span className="text-gray-600">{c.activities.length}</span>
-                          <span>
+                        <tr key={c.id} onClick={() => { setSelectedCandidate(c); setPage("profile"); }}
+                          className="border-b border-stone-100 transition-colors hover:bg-stone-50/50 cursor-pointer">
+                          <td className="px-4 py-3 align-middle text-stone-400 text-xs tabular-nums">{i + 1}</td>
+                          <td className="px-4 py-3 align-middle font-medium text-stone-800">{c.full_name}</td>
+                          <td className="px-4 py-3 align-middle text-stone-600 tabular-nums">{c.age}</td>
+                          <td className="px-4 py-3 align-middle text-stone-600 truncate max-w-[120px]">{c.city || "—"}</td>
+                          <td className="px-4 py-3 align-middle text-stone-500 truncate max-w-[150px] text-xs">{c.school_name || "—"}</td>
+                          <td className="px-4 py-3 align-middle text-stone-600 tabular-nums">{c.gpa ?? "—"}</td>
+                          <td className="px-4 py-3 align-middle text-stone-600 tabular-nums">{c.activities.length}</td>
+                          <td className="px-4 py-3 align-middle">
                             {r ? (
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded ${r.total_score >= 70 ? "bg-green-50 text-green-700" : r.total_score >= 45 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"}`}>
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded tabular-nums ${r.total_score >= 70 ? "bg-green-50 text-green-700" : r.total_score >= 45 ? "bg-yellow-50 text-yellow-700" : "bg-red-50 text-red-700"}`}>
                                 {Math.round(r.total_score)}{r.scoring_method === "llm" ? " AI" : " H"}
                               </span>
                             ) : isScoring ? (
-                              <div className="w-4 h-4 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                              <div className="w-4 h-4 border-2 border-stone-200 border-t-stone-900 rounded-full animate-spin" />
                             ) : (
-                              <span className="text-xs text-gray-300">—</span>
+                              <span className="text-xs text-stone-300">—</span>
                             )}
-                          </span>
-                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            {activeTab === "pending" && (
-                              <>
-                                <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
-                                  className="p-1 rounded text-green-400 hover:text-green-700 hover:bg-green-50"><CheckCircle className="w-3.5 h-3.5" /></button>
+                          </td>
+                          <td className="px-4 py-3 align-middle">
+                            <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                              <button onClick={() => { setSelectedCandidate(c); setPage("profile"); }} title="Просмотр"
+                                className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-50"><Eye className="w-3.5 h-3.5" /></button>
+                              {activeTab === "pending" && (
+                                <>
+                                  <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
+                                    className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-50"><CheckCircle className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => updateStatus(c.id, "rejected")} title="Отклонить"
+                                    className="p-1 rounded text-stone-300 hover:text-stone-600 hover:bg-stone-50"><XCircle className="w-3.5 h-3.5" /></button>
+                                </>
+                              )}
+                              {activeTab === "approved" && (
                                 <button onClick={() => updateStatus(c.id, "rejected")} title="Отклонить"
-                                  className="p-1 rounded text-red-300 hover:text-red-600 hover:bg-red-50"><XCircle className="w-3.5 h-3.5" /></button>
-                              </>
-                            )}
-                            {activeTab === "approved" && (
-                              <button onClick={() => updateStatus(c.id, "rejected")} title="Отклонить"
-                                className="p-1 rounded text-red-300 hover:text-red-600 hover:bg-red-50"><XCircle className="w-3.5 h-3.5" /></button>
-                            )}
-                            {activeTab === "rejected" && (
-                              <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
-                                className="p-1 rounded text-green-400 hover:text-green-700 hover:bg-green-50"><CheckCircle className="w-3.5 h-3.5" /></button>
-                            )}
-                            <button onClick={() => removeCandidate(c.id)} title="Удалить"
-                              className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
+                                  className="p-1 rounded text-stone-300 hover:text-stone-600 hover:bg-stone-50"><XCircle className="w-3.5 h-3.5" /></button>
+                              )}
+                              {activeTab === "rejected" && (
+                                <button onClick={() => updateStatus(c.id, "approved")} title="Одобрить"
+                                  className="p-1 rounded text-stone-400 hover:text-stone-700 hover:bg-stone-50"><CheckCircle className="w-3.5 h-3.5" /></button>
+                              )}
+                              <button onClick={() => removeCandidate(c.id)} title="Удалить"
+                                className="p-1 rounded text-stone-300 hover:text-stone-500 hover:bg-stone-50"><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </td>
+                        </tr>
                       );
                     })}
+                    </tbody>
+                    </table>
                   </div>
                 )}
               </div>
@@ -1655,11 +1753,11 @@ export default function App() {
 
       {/* Scoring overlay */}
       {scoring && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-            <div className="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-sm font-medium text-gray-800">Оцениваем {filteredCandidates.length} кандидатов...</p>
-            <p className="text-xs text-gray-400 mt-1">{config.llm_active ? "Используем AI — это может занять время" : "Эвристика — быстрый анализ"}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl border border-stone-200 p-8 text-center">
+            <div className="w-10 h-10 border-3 border-stone-200 border-t-stone-900 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-medium text-stone-800">Оцениваем {filteredCandidates.length} кандидатов...</p>
+            <p className="text-xs text-stone-400 mt-1">{config.llm_active ? "Используем AI — это может занять время" : "Эвристика — быстрый анализ"}</p>
           </div>
         </div>
       )}

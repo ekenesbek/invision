@@ -157,6 +157,7 @@ class ScoringResult(BaseModel):
     scoring_method: str = Field("heuristic", description="'llm' или 'heuristic'")
     llm_analysis: Optional[dict] = Field(None, description="Расширенный LLM-анализ: скрытые сильные стороны, вопросы для интервью")
     baseline_score: Optional[float] = Field(None, description="Baseline-балл (наивные правила) для сравнения")
+    ml_detection: Optional[dict] = Field(None, description="ML-модель InVisionEssayDetector: per-essay breakdown")
 
 
 # ─── Batch & Comparison Models ───────────────────────────
