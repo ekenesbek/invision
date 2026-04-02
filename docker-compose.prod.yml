@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://invision:invision@postgres:5432/invision
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: http://51.195.200.207:8443/v1
     volumes:
       - ./ml/model:/app/ml/model:ro
     depends_on:
