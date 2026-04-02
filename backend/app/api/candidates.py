@@ -279,7 +279,7 @@ async def score_all_candidates(
                     resp = await client.chat.completions.create(
                         model=model,
                         messages=[{"role": "user", "content": prompt}],
-                        max_tokens=500,
+                        max_completion_tokens=500,
                         temperature=0.7,
                     )
                     answer = resp.choices[0].message.content
@@ -377,7 +377,7 @@ async def ask_ai_about_candidate(candidate_id: str, req: AskAIRequest, db: Async
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
-        max_tokens=1000,
+        max_completion_tokens=1000,
         temperature=0.7,
     )
 

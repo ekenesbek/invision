@@ -189,7 +189,7 @@ async def llm_score_candidate(candidate: CandidateProfile) -> Optional[dict]:
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.2,
-            max_tokens=1500,
+            max_completion_tokens=1500,
         )
 
         content = response.choices[0].message.content

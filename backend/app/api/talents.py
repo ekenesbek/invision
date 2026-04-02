@@ -293,7 +293,7 @@ async def enrich_talent_with_ai(talent_id: int, db: AsyncSession = Depends(get_d
         resp = await client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=800,
+            max_completion_tokens=800,
             temperature=0.5,
         )
         import json
@@ -354,7 +354,7 @@ async def enrich_all_talents(db: AsyncSession = Depends(get_db)):
             resp = await client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=400,
+                max_completion_tokens=400,
                 temperature=0.5,
             )
             import json
