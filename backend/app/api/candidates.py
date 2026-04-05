@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..crud import (
     add_chat_message,
+    clear_all_candidates,
+    clear_all_scores,
     clear_chat_history,
     create_candidate,
     create_candidates_bulk,
@@ -161,6 +163,20 @@ async def remove_candidate(candidate_id: str, db: AsyncSession = Depends(get_db)
     if not ok:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return {"deleted": True}
+
+
+@candidates_router.delete("")
+async def remove_all_candidates(db: AsyncSession = Depends(get_db)):
+    """Delete ALL candidates, scoring results, and chat messages."""
+    count = await clear_all_candidates(db)
+    return {"deleted": count, "message": f"Удалено {count} кандидатов"}
+
+
+@candidates_router.post("/reset-scores")
+async def reset_all_scores(db: AsyncSession = Depends(get_db)):
+    """Reset all scores: delete scoring results, chat messages, set all statuses to pending."""
+    count = await clear_all_scores(db)
+    return {"reset": count, "message": f"Сброшено {count} оценок, все статусы → pending"}
 
 
 @candidates_router.post("/{candidate_id}/score")

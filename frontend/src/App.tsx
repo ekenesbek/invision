@@ -684,13 +684,15 @@ function AddCandidateModal({ onAdd, onClose }: { onAdd: (c: Candidate) => void; 
 
 // ─── Settings Page ──────────────────────────────────────
 
-function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; onUpdate: (c: ConfigState) => void; onNavigate: (p: Page) => void }) {
+function SettingsPage({ config, onUpdate, onNavigate, onDataReset }: { config: ConfigState; onUpdate: (c: ConfigState) => void; onNavigate: (p: Page) => void; onDataReset?: () => void }) {
   const [key, setKey] = useState("");
   const [showKeyInput, setShowKeyInput] = useState(!config.has_api_key);
   const [model, setModel] = useState(config.model);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [mlStatus, setMlStatus] = useState<{ available: boolean; ml_model: string; base_model: string | null; task: string | null } | null>(null);
+  const [resetting, setResetting] = useState<string | null>(null);
+  const [resetDone, setResetDone] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`${API}/ml/status`).then(r => r.json()).then(setMlStatus).catch(() => {});
@@ -863,6 +865,71 @@ function SettingsPage({ config, onUpdate, onNavigate }: { config: ConfigState; o
           className="w-full py-2.5 bg-stone-900 text-white rounded-lg font-semibold hover:bg-stone-800 disabled:opacity-50 flex items-center justify-center gap-2 text-sm">
           {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : saved ? <><Check className="w-4 h-4" /> Сохранено</> : "Сохранить настройки"}
         </button>
+
+        {/* Danger Zone */}
+        <div className="rounded-lg border border-red-200 bg-red-50/50 p-5 mt-2">
+          <h3 className="text-sm font-semibold text-red-800 mb-1 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-red-600" /> Управление данными
+          </h3>
+          <p className="text-[11px] text-red-600/70 mb-4">Эти действия необратимы. Будьте внимательны.</p>
+
+          <div className="space-y-3">
+            {/* Reset scores */}
+            <div className="flex items-start gap-3 bg-white rounded-lg border border-red-100 p-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-stone-800">Сбросить все оценки</p>
+                <p className="text-[11px] text-stone-500 mt-0.5">Удалить все результаты скоринга, чат-историю и вернуть статусы кандидатов в «На рассмотрении»</p>
+              </div>
+              <button
+                disabled={resetting !== null}
+                onClick={async () => {
+                  if (!confirm("Сбросить ВСЕ оценки и статусы кандидатов? Это действие необратимо.")) return;
+                  setResetting("scores");
+                  try {
+                    await fetch(`${API}/candidates/reset-scores`, { method: "POST" });
+                    setResetDone("scores");
+                    onDataReset?.();
+                    setTimeout(() => setResetDone(null), 3000);
+                  } catch {}
+                  setResetting(null);
+                }}
+                className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-red-200 text-red-700 hover:bg-red-50 hover:border-red-300 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {resetting === "scores" ? <div className="w-3 h-3 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                  : resetDone === "scores" ? <><Check className="w-3 h-3" /> Готово</>
+                  : <><BarChart3 className="w-3 h-3" /> Сбросить</>}
+              </button>
+            </div>
+
+            {/* Delete all candidates */}
+            <div className="flex items-start gap-3 bg-white rounded-lg border border-red-100 p-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-stone-800">Удалить всех кандидатов</p>
+                <p className="text-[11px] text-stone-500 mt-0.5">Полностью очистить базу: все кандидаты, оценки и история чатов будут удалены</p>
+              </div>
+              <button
+                disabled={resetting !== null}
+                onClick={async () => {
+                  if (!confirm("Удалить ВСЕХ кандидатов и все данные? Это действие НЕОБРАТИМО!")) return;
+                  if (!confirm("Вы уверены? Все кандидаты, оценки и чаты будут удалены навсегда.")) return;
+                  setResetting("candidates");
+                  try {
+                    await fetch(`${API}/candidates`, { method: "DELETE" });
+                    setResetDone("candidates");
+                    onDataReset?.();
+                    setTimeout(() => setResetDone(null), 3000);
+                  } catch {}
+                  setResetting(null);
+                }}
+                className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-400 disabled:opacity-50 transition-colors flex items-center gap-1.5"
+              >
+                {resetting === "candidates" ? <div className="w-3 h-3 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                  : resetDone === "candidates" ? <><Check className="w-3 h-3" /> Готово</>
+                  : <><Trash2 className="w-3 h-3" /> Удалить всех</>}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -2059,7 +2126,7 @@ function AuthenticatedApp({ authEmail, onLogout }: { authEmail: string | null; o
           )}
 
           {/* Settings */}
-          {page === "settings" && <SettingsPage config={config} onUpdate={setConfig} onNavigate={setPage} />}
+          {page === "settings" && <SettingsPage config={config} onUpdate={setConfig} onNavigate={setPage} onDataReset={loadData} />}
           {page === "ml-playground" && <MLPlayground onBack={() => setPage("settings")} />}
 
           {/* Talents */}

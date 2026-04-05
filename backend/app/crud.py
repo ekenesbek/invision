@@ -105,3 +105,25 @@ async def add_chat_message(db: AsyncSession, candidate_id: str, role: str, conte
 async def clear_chat_history(db: AsyncSession, candidate_id: str) -> None:
     await db.execute(delete(ChatMessageDB).where(ChatMessageDB.candidate_id == candidate_id))
     await db.commit()
+
+
+# ─── Bulk Reset Operations ─────────────────────────────
+
+async def clear_all_scores(db: AsyncSession) -> int:
+    """Delete all scoring results and chat messages, reset candidate statuses to pending."""
+    scores = await db.execute(delete(ScoringResultDB))
+    await db.execute(delete(ChatMessageDB))
+    # Reset all statuses to pending
+    from sqlalchemy import update
+    await db.execute(update(CandidateDB).values(status="pending"))
+    await db.commit()
+    return scores.rowcount
+
+
+async def clear_all_candidates(db: AsyncSession) -> int:
+    """Delete all candidates, scoring results, and chat messages."""
+    await db.execute(delete(ChatMessageDB))
+    await db.execute(delete(ScoringResultDB))
+    result = await db.execute(delete(CandidateDB))
+    await db.commit()
+    return result.rowcount
