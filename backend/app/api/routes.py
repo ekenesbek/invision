@@ -331,7 +331,8 @@ async def ml_model_status():
     return {
         "ml_model": "InVisionEssayDetector",
         "available": available,
-        "base_model": "distilbert-base-uncased" if available else None,
+        "base_model": "xlm-roberta-base" if available else None,
+        "languages": ["en", "kz"] if available else None,
         "task": "AI-generated text detection (binary classification)" if available else None,
     }
 
